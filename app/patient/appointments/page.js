@@ -90,7 +90,7 @@ export default function Appointments() {
 
       {/* Booking Form - Success State */}
       {showBooking && bookingSuccess && (
-        <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-8 text-center">
+        <div className="bg-white rounded-xl border border-emerald-200 p-8 text-center bg-emerald-50">
           <div className="mb-4 flex justify-center">
             <CheckCircle className="w-12 h-12 text-emerald-600" />
           </div>
