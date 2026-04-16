@@ -1,195 +1,128 @@
 'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Heart, Stethoscope, ArrowRight, Shield, Activity, Users } from "lucide-react";
-import { useApp } from "../lib/AppContext";
-import { doctors, patients } from "../lib/mockData";
+import Link from 'next/link';
+import {
+  Activity,
+  ArrowRight,
+  Heart,
+  HeartPulse,
+  Shield,
+  Stethoscope,
+  UserRound,
+} from 'lucide-react';
 
-export default function Login() {
-  const { setRole, setCurrentDoctor, setCurrentPatient } = useApp();
-  const router = useRouter();
-  const [step, setStep] = useState("role");
-  const [selectedRole, setSelectedRole] = useState(null);
+const roleCards = [
+  {
+    href: '/login?role=patient',
+    title: "I'm a Patient",
+    description:
+      'View appointments, medical history, prescriptions, and connect with your care team.',
+    cta: 'Continue as Patient',
+    accent: 'blue',
+    Icon: UserRound,
+  },
+  {
+    href: '/login?role=doctor',
+    title: "I'm a Doctor",
+    description:
+      'Manage patient schedules, review records, update availability, and coordinate care.',
+    cta: 'Continue as Doctor',
+    accent: 'teal',
+    Icon: Stethoscope,
+  },
+];
 
-  const handleRoleSelect = (role) => {
-    setSelectedRole(role);
-    setStep("select");
-  };
+const trustItems = [
+  { label: 'HIPAA Compliant', Icon: Shield },
+  { label: 'Real-time Monitoring', Icon: Activity },
+  { label: '256-bit Encryption', Icon: HeartPulse },
+];
 
-  const handleUserSelect = (id) => {
-    if (selectedRole === "doctor") {
-      const doc = doctors.find((d) => d.id === id);
-      setCurrentDoctor(doc);
-      setRole("doctor");
-      router.push("/doctor/dashboard");
-    } else {
-      const pat = patients.find((p) => p.id === id);
-      setCurrentPatient(pat);
-      setRole("patient");
-      router.push("/patient/dashboard");
-    }
-  };
-
+export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex flex-col">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-8 py-6">
-        <div className="w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center">
-          <Heart className="w-5 h-5 text-white" fill="white" />
-        </div>
-        <span className="text-white text-xl font-semibold tracking-tight">VitalSync</span>
-        <span className="text-blue-400 text-sm ml-1">Healthcare</span>
-      </div>
+    <main className="min-h-screen bg-[#16224f] text-white">
+      <div className="relative mx-auto flex min-h-screen max-w-[1280px] flex-col px-5 pb-5 pt-7 sm:px-8 lg:px-10">
+        <header className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#3384ff] shadow-[0_10px_25px_rgba(51,132,255,0.35)]">
+            <Heart className="h-5 w-5 fill-white text-white" strokeWidth={2.4} />
+          </div>
+          <div className="flex items-baseline gap-4">
+            <span className="text-[21px] font-semibold tracking-[-0.02em] text-white">
+              VitalSync
+            </span>
+            <span className="text-base font-medium text-[#59a8ff]">Healthcare</span>
+          </div>
+        </header>
 
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-4xl">
-          {step === "role" ? (
-            <>
-              {/* Hero */}
-              <div className="text-center mb-12">
-                <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-4 py-1.5 mb-6">
-                  <Activity className="w-3.5 h-3.5 text-blue-400" />
-                  <span className="text-blue-300 text-xs font-medium">Intelligent Healthcare Platform</span>
-                </div>
-                <h1 className="text-white mb-4" style={{ fontSize: "2.75rem", fontWeight: 700, lineHeight: 1.1 }}>
-                  Your health, connected.
-                </h1>
-                <p className="text-slate-400 max-w-md mx-auto" style={{ fontSize: "1.05rem" }}>
-                  Seamless care coordination between patients and physicians — all in one place.
-                </p>
-              </div>
+        <section className="flex flex-1 flex-col items-center justify-center pb-10 pt-14">
+          <div className="w-full max-w-[920px] text-center">
+            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-[#2f4f93] bg-[#20356e] px-5 py-2 text-sm font-medium text-[#8ebcf9] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+              <Activity className="h-4 w-4" strokeWidth={2.3} />
+              Intelligent Healthcare Platform
+            </div>
 
-              {/* Role Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
-                <button
-                  onClick={() => handleRoleSelect("patient")}
-                  className="group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/40 rounded-2xl p-8 text-left transition-all duration-300 cursor-pointer"
+            <h1 className="mx-auto mt-9 max-w-[640px] text-[42px] font-semibold leading-[1.08] tracking-[-0.035em] text-white sm:text-[58px]">
+              Your health, connected.
+            </h1>
+
+            <p className="mx-auto mt-6 max-w-[720px] text-[17px] leading-8 text-[#93a3c9] sm:text-[18px]">
+              Seamless care coordination between patients and physicians
+              <br className="hidden sm:block" /> all in one place.
+            </p>
+          </div>
+
+          <div className="mt-14 grid w-full max-w-[1020px] gap-5 lg:grid-cols-2">
+            {roleCards.map(({ href, title, description, cta, accent, Icon }) => {
+              const isBlue = accent === 'blue';
+
+              return (
+                <Link
+                  key={title}
+                  href={href}
+                  className="group rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-[rgba(46,58,108,0.96)] px-9 py-9 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] transition duration-300 hover:-translate-y-1 hover:border-[rgba(255,255,255,0.12)]"
                 >
-                  <div className="w-14 h-14 bg-blue-500/20 rounded-2xl flex items-center justify-center mb-5 group-hover:bg-blue-500/30 transition-colors">
-                    <Users className="w-7 h-7 text-blue-400" />
+                  <div
+                    className={`flex h-16 w-16 items-center justify-center rounded-[18px] ${
+                      isBlue ? 'bg-[#304f97] text-[#63a6ff]' : 'bg-[#1d5c74] text-[#22d3d3]'
+                    }`}
+                  >
+                    <Icon className="h-8 w-8" strokeWidth={2.1} />
                   </div>
-                  <h2 className="text-white mb-2" style={{ fontSize: "1.35rem", fontWeight: 600 }}>I'm a Patient</h2>
-                  <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                    View appointments, medical history, prescriptions, and connect with your care team.
+
+                  <h2 className="mt-8 text-[24px] font-semibold tracking-[-0.02em] text-white">
+                    {title}
+                  </h2>
+
+                  <p className="mt-4 max-w-[430px] text-[16px] leading-8 text-[#9aa7c7]">
+                    {description}
                   </p>
-                  <div className="flex items-center gap-2 text-blue-400 text-sm font-medium">
-                    <span>Continue as Patient</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </button>
 
-                <button
-                  onClick={() => handleRoleSelect("doctor")}
-                  className="group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-teal-500/40 rounded-2xl p-8 text-left transition-all duration-300 cursor-pointer"
-                >
-                  <div className="w-14 h-14 bg-teal-500/20 rounded-2xl flex items-center justify-center mb-5 group-hover:bg-teal-500/30 transition-colors">
-                    <Stethoscope className="w-7 h-7 text-teal-400" />
-                  </div>
-                  <h2 className="text-white mb-2" style={{ fontSize: "1.35rem", fontWeight: 600 }}>I'm a Doctor</h2>
-                  <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                    Manage patient schedules, review records, update availability, and coordinate care.
-                  </p>
-                  <div className="flex items-center gap-2 text-teal-400 text-sm font-medium">
-                    <span>Continue as Doctor</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </button>
-              </div>
+                  <span
+                    className={`mt-8 inline-flex items-center gap-3 text-[16px] font-semibold ${
+                      isBlue ? 'text-[#54a5ff]' : 'text-[#18d4cf]'
+                    }`}
+                  >
+                    {cta}
+                    <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
 
-              {/* Features */}
-              <div className="flex items-center justify-center gap-8 text-slate-500 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>HIPAA Compliant</span>
-                </div>
-                <div className="w-1 h-1 bg-slate-700 rounded-full" />
-                <div className="flex items-center gap-1.5">
-                  <Activity className="w-3.5 h-3.5" />
-                  <span>Real-time Monitoring</span>
-                </div>
-                <div className="w-1 h-1 bg-slate-700 rounded-full" />
-                <div className="flex items-center gap-1.5">
-                  <Heart className="w-3.5 h-3.5" />
-                  <span>256-bit Encryption</span>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => setStep("role")}
-                className="flex items-center gap-2 text-slate-400 hover:text-white text-sm mb-8 transition-colors"
-              >
-                <ArrowRight className="w-4 h-4 rotate-180" />
-                Back to role selection
-              </button>
-
-              <div className="text-center mb-10">
-                <h2 className="text-white mb-2" style={{ fontSize: "1.75rem", fontWeight: 700 }}>
-                  {selectedRole === "patient" ? "Select your profile" : "Select your physician profile"}
-                </h2>
-                <p className="text-slate-400 text-sm">Choose a demo account to explore the platform</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-                {selectedRole === "patient"
-                  ? patients.map((patient) => (
-                      <button
-                        key={patient.id}
-                        onClick={() => handleUserSelect(patient.id)}
-                        className="group flex items-center gap-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/40 rounded-2xl p-5 text-left transition-all duration-300 cursor-pointer"
-                      >
-                        <img
-                          src={patient.photo}
-                          alt={patient.name}
-                          className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white font-medium">{patient.name}</p>
-                          <p className="text-slate-400 text-sm">
-                            {patient.age} yrs · {patient.gender} · {patient.bloodType}
-                          </p>
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {patient.conditions.slice(0, 2).map((c) => (
-                              <span key={c} className="bg-blue-500/10 text-blue-300 text-xs px-2 py-0.5 rounded-full">
-                                {c}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition-all flex-shrink-0" />
-                      </button>
-                    ))
-                  : doctors.map((doctor) => (
-                      <button
-                        key={doctor.id}
-                        onClick={() => handleUserSelect(doctor.id)}
-                        className="group flex items-center gap-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-teal-500/40 rounded-2xl p-5 text-left transition-all duration-300 cursor-pointer"
-                      >
-                        <img
-                          src={doctor.photo}
-                          alt={doctor.name}
-                          className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white font-medium">{doctor.name}</p>
-                          <p className="text-slate-400 text-sm">{doctor.specialty}</p>
-                          <div className="flex items-center gap-2 mt-1.5">
-                            <div className={`w-1.5 h-1.5 rounded-full ${doctor.available ? "bg-emerald-400" : "bg-slate-500"}`} />
-                            <span className={`text-xs ${doctor.available ? "text-emerald-400" : "text-slate-500"}`}>
-                              {doctor.available ? "Available Now" : "Unavailable"}
-                            </span>
-                          </div>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-teal-400 group-hover:translate-x-1 transition-all flex-shrink-0" />
-                      </button>
-                    ))}
-              </div>
-            </>
-          )}
-        </div>
+        <footer className="flex flex-wrap items-center justify-center gap-5 border-t border-[rgba(255,255,255,0.06)] pt-4 text-sm text-[#6d7ea8]">
+          {trustItems.map(({ label, Icon }, index) => (
+            <div key={label} className="flex items-center gap-4">
+              {index > 0 ? <span className="hidden text-[#4d5e8d] sm:block">.</span> : null}
+              <span className="inline-flex items-center gap-2">
+                <Icon className="h-4 w-4" strokeWidth={2.1} />
+                {label}
+              </span>
+            </div>
+          ))}
+        </footer>
       </div>
-    </div>
+    </main>
   );
 }

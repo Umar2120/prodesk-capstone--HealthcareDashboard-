@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from "react";
-import { AlertCircle, CheckCircle, Activity, Syringe, testTube } from "lucide-react";
+import { AlertCircle, CheckCircle, Activity, Syringe, TestTube } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
-import { medicalHistory, doctors } from "../../../lib/mockData";
+import { doctors, getMedicalHistoryForPatient } from "../../../lib/mockData";
 
 const typeIcons = {
   diagnosis: <AlertCircle className="w-5 h-5 text-red-500" />,
   procedure: <Activity className="w-5 h-5 text-purple-500" />,
-  lab: <testTube className="w-5 h-5 text-blue-500" />,
+  lab: <TestTube className="w-5 h-5 text-blue-500" />,
   visit: <CheckCircle className="w-5 h-5 text-green-500" />,
   vaccination: <Syringe className="w-5 h-5 text-emerald-500" />,
   emergency: <AlertCircle className="w-5 h-5 text-orange-600" />,
@@ -26,10 +26,9 @@ export default function MedicalHistory() {
 
   if (!currentPatient) return null;
 
-  const events = medicalHistory
-    .filter((e) => e.patientId === currentPatient.id)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
+  const events = getMedicalHistoryForPatient(currentPatient).sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
   const filtered =
     selectedType === "All"
       ? events
@@ -37,13 +36,11 @@ export default function MedicalHistory() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Medical History</h1>
         <p className="text-slate-500 mt-1">Your complete medical timeline</p>
       </div>
 
-      {/* Filter */}
       <div className="flex gap-2 flex-wrap">
         {["All", "Diagnosis", "Procedure", "Lab", "Visit", "Vaccination", "Emergency"].map((type) => (
           <button
@@ -60,7 +57,6 @@ export default function MedicalHistory() {
         ))}
       </div>
 
-      {/* Timeline */}
       <div className="space-y-4">
         {filtered.length === 0 ? (
           <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
@@ -88,13 +84,13 @@ export default function MedicalHistory() {
                     <div className="mt-3 flex items-center justify-between text-sm text-slate-500">
                       <div>
                         <span>{event.date}</span>
-                        {doctor && <span> • {doctor.name}</span>}
+                        {doctor && <span> · {doctor.name}</span>}
                       </div>
                       {event.attachments && event.attachments.length > 0 && (
                         <div className="flex gap-2">
                           {event.attachments.map((attachment) => (
                             <span key={attachment} className="text-blue-600 hover:underline cursor-pointer">
-                              📎 {attachment}
+                              Attachment: {attachment}
                             </span>
                           ))}
                         </div>

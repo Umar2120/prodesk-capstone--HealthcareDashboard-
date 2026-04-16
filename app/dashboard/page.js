@@ -4,23 +4,23 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 
-export default function PatientPage() {
-  const { user, loading } = useAuth();
+export default function DashboardRedirect() {
   const router = useRouter();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     if (!loading) {
-      if (user?.role === 'patient') {
-        router.replace('/patient/dashboard');
+      if (user) {
+        router.replace(`/${user.role || 'patient'}/dashboard`);
       } else {
         router.replace('/login');
       }
     }
-  }, [loading, router, user]);
+  }, [loading, user, router]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-      <p>Redirecting to the patient dashboard...</p>
+      <p>Redirecting to your dashboard...</p>
     </div>
   );
 }

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from "react";
-import { Calendar, Clock, MapPin, Check, X, Pill, DollarSign, ArrowRight, CheckCircle } from "lucide-react";
+import { Calendar, Clock, MapPin, CheckCircle } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
-import { doctors } from "../../../lib/mockData";
+import { doctors, getAppointmentsForPatient, getPatientDataSeed } from "../../../lib/mockData";
 
 export default function Appointments() {
   const { currentPatient, appointments, bookAppointment } = useApp();
@@ -19,13 +19,14 @@ export default function Appointments() {
 
   if (!currentPatient) return null;
 
-  const myAppointments = appointments
-    .filter((a) => a.patientId === currentPatient.id)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-  const filtered = filterStatus === "All" 
-    ? myAppointments 
-    : myAppointments.filter((a) => a.status === filterStatus.toLowerCase());
+  const patientProfile = getPatientDataSeed(currentPatient);
+  const myAppointments = getAppointmentsForPatient(patientProfile, appointments).sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+  const filtered =
+    filterStatus === "All"
+      ? myAppointments
+      : myAppointments.filter((a) => a.status === filterStatus.toLowerCase());
 
   const statusColors = {
     pending: "bg-amber-100 text-amber-800",
@@ -45,17 +46,16 @@ export default function Appointments() {
 
   const handleBookAppointment = () => {
     if (selectedDoctor && selectedDate && selectedTime) {
-      const appointment = {
-        patientId: currentPatient.id,
+      bookAppointment({
+        patientId: patientProfile.id,
         doctorId: selectedDoctor.id,
         date: selectedDate,
         time: selectedTime,
         type: appointmentType,
-        notes: notes,
+        notes,
         status: "pending",
-      };
+      });
 
-      bookAppointment(appointment);
       setBookingSuccess(true);
 
       setTimeout(() => {
@@ -72,23 +72,20 @@ export default function Appointments() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Appointments</h1>
         <p className="text-slate-500 mt-1">Manage and view your medical appointments</p>
       </div>
 
-      {/* Book Appointment Button */}
       <div className="flex gap-3">
         <button
           onClick={() => setShowBooking(!showBooking)}
           className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
         >
-          📝 Book Appointment
+          Book Appointment
         </button>
       </div>
 
-      {/* Booking Form - Success State */}
       {showBooking && bookingSuccess && (
         <div className="bg-white rounded-xl border border-emerald-200 p-8 text-center bg-emerald-50">
           <div className="mb-4 flex justify-center">
@@ -99,7 +96,6 @@ export default function Appointments() {
         </div>
       )}
 
-      {/* Booking Form */}
       {showBooking && !bookingSuccess && (
         <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-6">
           <div className="flex items-center justify-between">
@@ -108,35 +104,27 @@ export default function Appointments() {
               onClick={() => setShowBooking(false)}
               className="text-slate-500 hover:text-slate-700 text-2xl"
             >
-              ×
+              x
             </button>
           </div>
 
-          {/* Progress Steps */}
           <div className="flex justify-between items-center">
             {[1, 2, 3].map((step) => (
               <div key={step} className="flex items-center flex-1">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                    step <= bookingStep
-                      ? "bg-blue-600 text-white"
-                      : "bg-slate-200 text-slate-600"
+                    step <= bookingStep ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600"
                   }`}
                 >
                   {step}
                 </div>
                 {step < 3 && (
-                  <div
-                    className={`flex-1 h-1 mx-2 ${
-                      step < bookingStep ? "bg-blue-600" : "bg-slate-200"
-                    }`}
-                  />
+                  <div className={`flex-1 h-1 mx-2 ${step < bookingStep ? "bg-blue-600" : "bg-slate-200"}`} />
                 )}
               </div>
             ))}
           </div>
 
-          {/* Step 1: Select Doctor */}
           {bookingStep === 1 && (
             <div className="space-y-4">
               <h3 className="font-semibold text-slate-900">Select a Doctor</h3>
@@ -155,15 +143,11 @@ export default function Appointments() {
                     }`}
                   >
                     <div className="flex gap-3">
-                      <img
-                        src={doctor.photo}
-                        alt={doctor.name}
-                        className="w-12 h-12 rounded object-cover"
-                      />
+                      <img src={doctor.photo} alt={doctor.name} className="w-12 h-12 rounded object-cover" />
                       <div>
                         <p className="font-semibold text-slate-900 text-sm">{doctor.name}</p>
                         <p className="text-xs text-slate-600">{doctor.specialty}</p>
-                        <p className="text-xs text-amber-600">⭐ {doctor.rating}</p>
+                        <p className="text-xs text-amber-600">Rating: {doctor.rating}</p>
                       </div>
                     </div>
                   </button>
@@ -179,21 +163,18 @@ export default function Appointments() {
             </div>
           )}
 
-          {/* Step 2: Select Date & Time */}
           {bookingStep === 2 && selectedDoctor && (
             <div className="space-y-4">
               <button
                 onClick={() => setBookingStep(1)}
                 className="text-blue-600 hover:text-blue-700 text-sm font-medium"
               >
-                ← Back
+                Back
               </button>
               <h3 className="font-semibold text-slate-900">{selectedDoctor.name}</h3>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Appointment Type
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Appointment Type</label>
                 <div className="grid grid-cols-2 gap-2">
                   {appointmentTypes.map((type) => (
                     <button
@@ -212,9 +193,7 @@ export default function Appointments() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Date
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Date</label>
                 <input
                   type="date"
                   value={selectedDate}
@@ -226,9 +205,7 @@ export default function Appointments() {
 
               {selectedDate && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Time Slot
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Time Slot</label>
                   <div className="grid grid-cols-3 gap-2">
                     {selectedDoctor.slots.map((slot) => (
                       <button
@@ -248,9 +225,7 @@ export default function Appointments() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Notes (Optional)
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Notes (Optional)</label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -278,14 +253,13 @@ export default function Appointments() {
             </div>
           )}
 
-          {/* Step 3: Review & Confirm */}
           {bookingStep === 3 && selectedDoctor && selectedDate && selectedTime && (
             <div className="space-y-4">
               <button
                 onClick={() => setBookingStep(2)}
                 className="text-blue-600 hover:text-blue-700 text-sm font-medium"
               >
-                ← Back
+                Back
               </button>
               <h3 className="font-semibold text-slate-900">Review Appointment</h3>
 
@@ -300,9 +274,7 @@ export default function Appointments() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Date</span>
-                  <span className="font-medium text-slate-900">
-                    {new Date(selectedDate).toLocaleDateString()}
-                  </span>
+                  <span className="font-medium text-slate-900">{new Date(selectedDate).toLocaleDateString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Time</span>
@@ -314,7 +286,7 @@ export default function Appointments() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Status</span>
-                  <span className="font-medium text-amber-700">⏳ Pending Approval</span>
+                  <span className="font-medium text-amber-700">Pending Approval</span>
                 </div>
               </div>
 
@@ -338,7 +310,6 @@ export default function Appointments() {
         </div>
       )}
 
-      {/* Filter Tabs */}
       <div className="flex gap-2 flex-wrap">
         {["All", "Pending", "Scheduled", "Completed", "Cancelled"].map((status) => (
           <button
@@ -355,7 +326,6 @@ export default function Appointments() {
         ))}
       </div>
 
-      {/* Appointments List */}
       <div className="space-y-3">
         {filtered.length === 0 ? (
           <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
@@ -367,16 +337,12 @@ export default function Appointments() {
             return (
               <div key={apt.id} className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
                 <div className="flex gap-4">
-                  <img
-                    src={doctor?.photo}
-                    alt={doctor?.name}
-                    className="w-16 h-16 rounded-lg object-cover"
-                  />
+                  <img src={doctor?.photo} alt={doctor?.name || "Doctor"} className="w-16 h-16 rounded-lg object-cover" />
                   <div className="flex-1">
                     <div className="flex items-center justify-between gap-4 flex-wrap">
                       <div>
-                        <h3 className="font-semibold text-slate-900">{doctor?.name}</h3>
-                        <p className="text-sm text-slate-500">{doctor?.specialty}</p>
+                        <h3 className="font-semibold text-slate-900">{doctor?.name || "Doctor"}</h3>
+                        <p className="text-sm text-slate-500">{doctor?.specialty || "General Medicine"}</p>
                       </div>
                       <div className="text-right">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium inline-block ${statusColors[apt.status]}`}>
@@ -399,7 +365,7 @@ export default function Appointments() {
                         {apt.location}
                       </div>
                     </div>
-                    {apt.notes && <p className="mt-2 text-sm text-slate-600">📝 {apt.notes}</p>}
+                    {apt.notes && <p className="mt-2 text-sm text-slate-600">Notes: {apt.notes}</p>}
                   </div>
                 </div>
               </div>

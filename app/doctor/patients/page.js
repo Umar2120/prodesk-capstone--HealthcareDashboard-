@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Heart, AlertCircle, Calendar } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
-import { appointments, patients as allPatients } from "../../../lib/mockData";
+import { getAppointmentsForDoctor, getPatientsForDoctor } from "../../../lib/mockData";
 
 export default function DoctorPatients() {
   const { currentDoctor } = useApp();
@@ -11,27 +11,21 @@ export default function DoctorPatients() {
 
   if (!currentDoctor) return null;
 
-  // Get unique patients for this doctor
-  const myAppointments = appointments.filter((a) => a.doctorId === currentDoctor.id);
-  const uniquePatientIds = [...new Set(myAppointments.map((a) => a.patientId))];
-  const myPatients = allPatients.filter((p) => uniquePatientIds.includes(p.id));
-
-  // Filter by search
+  const myAppointments = getAppointmentsForDoctor(currentDoctor);
+  const myPatients = getPatientsForDoctor(currentDoctor);
   const filtered = myPatients.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.bloodType.includes(searchQuery)
+    (patient) =>
+      patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      patient.bloodType.includes(searchQuery)
   );
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900">My Patients</h1>
         <p className="text-slate-500 mt-1">Manage and view your patient list ({myPatients.length} total)</p>
       </div>
 
-      {/* Search */}
       <div>
         <input
           type="text"
@@ -42,7 +36,6 @@ export default function DoctorPatients() {
         />
       </div>
 
-      {/* Patients Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.length === 0 ? (
           <div className="col-span-full bg-white rounded-xl border border-slate-200 p-8 text-center">
@@ -52,23 +45,17 @@ export default function DoctorPatients() {
           filtered.map((patient) => {
             const patientAppts = myAppointments.filter((a) => a.patientId === patient.id);
             const lastAppt = patientAppts[0];
+
             return (
               <div key={patient.id} className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-3">
-                  <img
-                    src={patient.photo}
-                    alt={patient.name}
-                    className="w-14 h-14 rounded-lg object-cover"
-                  />
+                  <img src={patient.photo} alt={patient.name} className="w-14 h-14 rounded-lg object-cover" />
                   <div className="flex-1">
                     <h3 className="font-semibold text-slate-900">{patient.name}</h3>
-                    <p className="text-sm text-slate-600">
-                      {patient.age} yrs • {patient.gender}
-                    </p>
+                    <p className="text-sm text-slate-600">{patient.age} yrs · {patient.gender}</p>
                   </div>
                 </div>
 
-                {/* Info */}
                 <div className="mt-4 space-y-2 text-sm">
                   <div className="flex items-center gap-2 text-slate-600">
                     <Heart className="w-4 h-4" />
@@ -88,7 +75,6 @@ export default function DoctorPatients() {
                   )}
                 </div>
 
-                {/* Last Appointment */}
                 {lastAppt && (
                   <div className="mt-4 pt-4 border-t border-slate-200 text-sm">
                     <div className="flex items-center gap-2 text-slate-600">
@@ -98,10 +84,9 @@ export default function DoctorPatients() {
                   </div>
                 )}
 
-                {/* Contact */}
                 <div className="mt-4 space-y-1 text-xs text-slate-600">
-                  <p>📧 {patient.email}</p>
-                  <p>📞 {patient.phone}</p>
+                  <p>Email: {patient.email}</p>
+                  <p>Phone: {patient.phone}</p>
                 </div>
               </div>
             );

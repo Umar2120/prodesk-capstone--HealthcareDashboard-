@@ -14,16 +14,16 @@ import {
   Droplets,
   Thermometer,
   Wind,
+  User,
 } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
-import { appointments, prescriptions, vitalSigns, doctors } from "../../../lib/mockData";
-
-const statusColors = {
-  scheduled: "bg-blue-50 text-blue-700 border-blue-100",
-  completed: "bg-emerald-50 text-emerald-700 border-emerald-100",
-  cancelled: "bg-red-50 text-red-700 border-red-100",
-  pending: "bg-amber-50 text-amber-700 border-amber-100",
-};
+import {
+  doctors,
+  getAppointmentsForPatient,
+  getPatientDataSeed,
+  getPrescriptionsForPatient,
+  vitalSigns,
+} from "../../../lib/mockData";
 
 export default function PatientDashboard() {
   const { currentPatient } = useApp();
@@ -31,13 +31,14 @@ export default function PatientDashboard() {
 
   if (!currentPatient) return null;
 
-  const myAppts = appointments
-    .filter((a) => a.patientId === currentPatient.id)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
+  const patientProfile = getPatientDataSeed(currentPatient);
+  const displayName = patientProfile.name.split(" ")[0];
+  const myAppts = getAppointmentsForPatient(currentPatient).sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
   const upcoming = myAppts.filter((a) => a.status === "scheduled");
-  const activePrescriptions = prescriptions.filter(
-    (p) => p.patientId === currentPatient.id && p.status === "active"
+  const activePrescriptions = getPrescriptionsForPatient(currentPatient).filter(
+    (p) => p.status === "active"
   );
 
   const latestVitals = vitalSigns[vitalSigns.length - 1];
@@ -65,7 +66,7 @@ export default function PatientDashboard() {
       trendGood: latestVitals.bloodPressureSys < prevVitals.bloodPressureSys,
     },
     {
-      label: "O₂ Saturation",
+      label: "O2 Saturation",
       value: `${latestVitals.oxygenSat}`,
       unit: "%",
       icon: Wind,
@@ -77,7 +78,7 @@ export default function PatientDashboard() {
     {
       label: "Temperature",
       value: `${latestVitals.temperature}`,
-      unit: "°F",
+      unit: "deg F",
       icon: Thermometer,
       color: "text-amber-500",
       bg: "bg-amber-50",
@@ -88,11 +89,18 @@ export default function PatientDashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Welcome */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-slate-900" style={{ fontSize: "1.5rem", fontWeight: 700 }}>
-            Good morning, {currentPatient.name.split(" ")[0]} 👋
+            Good morning,{" "}
+            <button
+              type="button"
+              onClick={() => router.push("/profile")}
+              className="inline-flex items-center gap-2 underline decoration-slate-300 underline-offset-4 text-slate-900 hover:text-blue-600 transition"
+            >
+              {displayName}
+              <User className="w-4 h-4" />
+            </button>
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">Wednesday, April 8, 2026 · Here's your health overview</p>
         </div>
@@ -105,25 +113,23 @@ export default function PatientDashboard() {
         </button>
       </div>
 
-      {/* Alerts */}
-      {currentPatient.conditions.length > 0 && (
+      {patientProfile.conditions.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
           <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
           <div>
             <p className="text-amber-800 text-sm font-medium">Active Conditions Reminder</p>
             <p className="text-amber-700 text-xs mt-0.5">
-              Managing: {currentPatient.conditions.join(", ")}. Stay consistent with your prescribed medications.
+              Managing: {patientProfile.conditions.join(", ")}. Stay consistent with your prescribed medications.
             </p>
           </div>
         </div>
       )}
 
-      {/* Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: "Upcoming Appointments", value: upcoming.length, icon: Calendar, color: "text-blue-500", bg: "bg-blue-50", action: () => router.push("/patient/appointments") },
           { label: "Active Prescriptions", value: activePrescriptions.length, icon: Pill, color: "text-violet-500", bg: "bg-violet-50", action: () => router.push("/patient/prescriptions") },
-          { label: "Active Conditions", value: currentPatient.conditions.length, icon: Activity, color: "text-rose-500", bg: "bg-rose-50", action: () => router.push("/patient/history") },
+          { label: "Active Conditions", value: patientProfile.conditions.length, icon: Activity, color: "text-rose-500", bg: "bg-rose-50", action: () => router.push("/patient/history") },
           { label: "Last Visit", value: "Mar 28", icon: Clock, color: "text-teal-500", bg: "bg-teal-50", action: () => router.push("/patient/history") },
         ].map((stat) => (
           <button
@@ -142,7 +148,6 @@ export default function PatientDashboard() {
         ))}
       </div>
 
-      {/* Vitals */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-slate-900 font-semibold">Current Vitals</h2>
@@ -171,9 +176,7 @@ export default function PatientDashboard() {
         </div>
       </div>
 
-      {/* Chart + Upcoming */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* BP Chart */}
         <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -190,7 +193,6 @@ export default function PatientDashboard() {
           </div>
         </div>
 
-        {/* Upcoming Appointments */}
         <div className="bg-white border border-slate-100 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-slate-900 font-semibold">Upcoming</h3>
@@ -209,10 +211,10 @@ export default function PatientDashboard() {
                 const doc = doctors.find((d) => d.id === appt.doctorId);
                 return (
                   <div key={appt.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
-                    <img src={doc.photo} alt={doc.name} className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                    <img src={doc?.photo} alt={doc?.name || "Doctor"} className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-slate-800 text-sm font-medium truncate">{doc.name}</p>
-                      <p className="text-slate-400 text-xs">{doc.specialty}</p>
+                      <p className="text-slate-800 text-sm font-medium truncate">{doc?.name || "Doctor"}</p>
+                      <p className="text-slate-400 text-xs">{doc?.specialty || "General Medicine"}</p>
                       <div className="flex items-center gap-1.5 mt-1.5">
                         <Calendar className="w-3 h-3 text-blue-400" />
                         <span className="text-blue-600 text-xs">{appt.date} · {appt.time}</span>
@@ -226,7 +228,6 @@ export default function PatientDashboard() {
         </div>
       </div>
 
-      {/* Active Prescriptions Quick View */}
       <div className="bg-white border border-slate-100 rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-slate-900 font-semibold">Active Prescriptions</h3>
@@ -259,7 +260,7 @@ export default function PatientDashboard() {
                 )}
               </div>
               <p className="text-slate-400 text-xs mt-2 pt-2 border-t border-slate-50 truncate">
-                Dr. {doctors.find((d) => d.id === rx.doctorId)?.name.replace("Dr. ", "")}
+                Dr. {doctors.find((d) => d.id === rx.doctorId)?.name.replace("Dr. ", "") || "Care Team"}
               </p>
             </div>
           ))}

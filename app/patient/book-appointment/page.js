@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from "react";
-import { Calendar, Clock, User, ArrowRight, CheckCircle } from "lucide-react";
+import { Calendar, Clock, ArrowRight, CheckCircle } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
-import { doctors } from "../../../lib/mockData";
+import { doctors, getPatientDataSeed } from "../../../lib/mockData";
 
 export default function BookAppointment() {
   const { currentPatient, bookAppointment } = useApp();
-  const [step, setStep] = useState(1); // 1: Select Doctor, 2: Select Date/Time, 3: Confirm
+  const [step, setStep] = useState(1);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
@@ -17,33 +17,32 @@ export default function BookAppointment() {
 
   if (!currentPatient) return null;
 
+  const patientProfile = getPatientDataSeed(currentPatient);
   const appointmentTypes = ["Consultation", "Follow-up", "Check-up", "Lab Work"];
 
   const handleBookAppointment = () => {
-    if (selectedDoctor && selectedDate && selectedTime) {
-      const appointment = {
-        patientId: currentPatient.id,
-        doctorId: selectedDoctor.id,
-        date: selectedDate,
-        time: selectedTime,
-        type: appointmentType,
-        notes: notes,
-        status: "pending", // Pending doctor approval
-      };
+    if (!selectedDoctor || !selectedDate || !selectedTime) return;
 
-      bookAppointment(appointment);
-      setBookingSuccess(true);
+    bookAppointment({
+      patientId: patientProfile.id,
+      doctorId: selectedDoctor.id,
+      date: selectedDate,
+      time: selectedTime,
+      type: appointmentType,
+      notes,
+      status: "pending",
+    });
 
-      // Reset form after 2 seconds
-      setTimeout(() => {
-        setStep(1);
-        setSelectedDoctor(null);
-        setSelectedDate("");
-        setSelectedTime("");
-        setNotes("");
-        setBookingSuccess(false);
-      }, 2000);
-    }
+    setBookingSuccess(true);
+
+    setTimeout(() => {
+      setStep(1);
+      setSelectedDoctor(null);
+      setSelectedDate("");
+      setSelectedTime("");
+      setNotes("");
+      setBookingSuccess(false);
+    }, 2000);
   };
 
   if (bookingSuccess) {
@@ -71,37 +70,26 @@ export default function BookAppointment() {
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Book an Appointment</h1>
         <p className="text-slate-500 mt-1">Schedule a consultation with a healthcare professional</p>
       </div>
 
-      {/* Progress Bar */}
       <div className="flex items-center gap-2 mb-8">
         {[1, 2, 3].map((s) => (
           <div key={s} className="flex items-center">
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                s <= step
-                  ? "bg-blue-500 text-white"
-                  : "bg-slate-200 text-slate-600"
+                s <= step ? "bg-blue-500 text-white" : "bg-slate-200 text-slate-600"
               }`}
             >
               {s}
             </div>
-            {s < 3 && (
-              <div
-                className={`w-12 h-1 mx-2 ${
-                  s < step ? "bg-blue-500" : "bg-slate-200"
-                }`}
-              />
-            )}
+            {s < 3 && <div className={`w-12 h-1 mx-2 ${s < step ? "bg-blue-500" : "bg-slate-200"}`} />}
           </div>
         ))}
       </div>
 
-      {/* Step 1: Select Doctor */}
       {step === 1 && (
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-slate-900">Select a Doctor</h2>
@@ -120,17 +108,13 @@ export default function BookAppointment() {
                 }`}
               >
                 <div className="flex gap-4">
-                  <img
-                    src={doctor.photo}
-                    alt={doctor.name}
-                    className="w-16 h-16 rounded-lg object-cover"
-                  />
+                  <img src={doctor.photo} alt={doctor.name} className="w-16 h-16 rounded-lg object-cover" />
                   <div className="flex-1">
                     <h3 className="font-semibold text-slate-900">{doctor.name}</h3>
                     <p className="text-sm text-slate-600">{doctor.specialty}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">
-                        ⭐ {doctor.rating}
+                        Rating: {doctor.rating}
                       </span>
                       {doctor.available && (
                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
@@ -146,26 +130,17 @@ export default function BookAppointment() {
         </div>
       )}
 
-      {/* Step 2: Select Date & Time */}
       {step === 2 && selectedDoctor && (
         <div className="space-y-6">
-          <button
-            onClick={() => setStep(1)}
-            className="text-blue-600 hover:text-blue-700 font-medium text-sm"
-          >
-            ← Back to Select Doctor
+          <button onClick={() => setStep(1)} className="text-blue-600 hover:text-blue-700 font-medium text-sm">
+            Back to Select Doctor
           </button>
 
           <div>
-            <h2 className="text-xl font-bold text-slate-900 mb-4">
-              {selectedDoctor.name}
-            </h2>
+            <h2 className="text-xl font-bold text-slate-900 mb-4">{selectedDoctor.name}</h2>
 
-            {/* Appointment Type */}
             <div className="mb-6">
-              <label className="block text-sm font-semibold text-slate-900 mb-3">
-                Appointment Type
-              </label>
+              <label className="block text-sm font-semibold text-slate-900 mb-3">Appointment Type</label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {appointmentTypes.map((type) => (
                   <button
@@ -183,7 +158,6 @@ export default function BookAppointment() {
               </div>
             </div>
 
-            {/* Date Selection */}
             <div className="mb-6">
               <label className="block text-sm font-semibold text-slate-900 mb-3">
                 <Calendar className="w-4 h-4 inline mr-2" />
@@ -198,7 +172,6 @@ export default function BookAppointment() {
               />
             </div>
 
-            {/* Time Selection */}
             {selectedDate && (
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-slate-900 mb-3">
@@ -223,11 +196,8 @@ export default function BookAppointment() {
               </div>
             )}
 
-            {/* Notes */}
             <div className="mb-6">
-              <label className="block text-sm font-semibold text-slate-900 mb-3">
-                Additional Notes (Optional)
-              </label>
+              <label className="block text-sm font-semibold text-slate-900 mb-3">Additional Notes (Optional)</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -237,7 +207,6 @@ export default function BookAppointment() {
               />
             </div>
 
-            {/* Action Buttons */}
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(1)}
@@ -257,27 +226,18 @@ export default function BookAppointment() {
         </div>
       )}
 
-      {/* Step 3: Review & Confirm */}
       {step === 3 && selectedDoctor && selectedDate && selectedTime && (
         <div className="space-y-6">
-          <button
-            onClick={() => setStep(2)}
-            className="text-blue-600 hover:text-blue-700 font-medium text-sm"
-          >
-            ← Back to Edit
+          <button onClick={() => setStep(2)} className="text-blue-600 hover:text-blue-700 font-medium text-sm">
+            Back to Edit
           </button>
 
           <div className="bg-white rounded-xl border border-slate-200 p-8">
             <h2 className="text-2xl font-bold text-slate-900 mb-6">Review Your Appointment</h2>
 
             <div className="space-y-4 mb-8">
-              {/* Doctor Info */}
               <div className="flex gap-4 pb-6 border-b border-slate-200">
-                <img
-                  src={selectedDoctor.photo}
-                  alt={selectedDoctor.name}
-                  className="w-20 h-20 rounded-lg object-cover"
-                />
+                <img src={selectedDoctor.photo} alt={selectedDoctor.name} className="w-20 h-20 rounded-lg object-cover" />
                 <div>
                   <h3 className="font-semibold text-slate-900 text-lg">{selectedDoctor.name}</h3>
                   <p className="text-slate-600">{selectedDoctor.specialty}</p>
@@ -285,7 +245,6 @@ export default function BookAppointment() {
                 </div>
               </div>
 
-              {/* Appointment Details */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-slate-50 p-4 rounded-lg">
                   <p className="text-xs text-slate-600 font-medium mb-1">DATE</p>
@@ -313,14 +272,12 @@ export default function BookAppointment() {
               )}
             </div>
 
-            {/* Confirmation Message */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
               <p className="text-sm text-blue-900">
-                After booking, this appointment will be pending doctor approval. You'll receive a notification once Dr. {selectedDoctor.name.split(' ')[1]} confirms.
+                After booking, this appointment will be pending doctor approval. You'll receive a notification once Dr. {selectedDoctor.name.split(" ")[1]} confirms.
               </p>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(2)}

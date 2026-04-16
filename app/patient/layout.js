@@ -12,9 +12,11 @@ import {
   Bell,
   Search,
   ChevronRight,
+  User,
 } from "lucide-react";
+import { useAuth } from "../../lib/auth";
 import { useApp } from "../../lib/AppContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const navItems = [
   { to: "/patient/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -25,13 +27,21 @@ const navItems = [
 
 export default function PatientLayout({ children }) {
   const { currentPatient, logout } = useApp();
+  const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [notifOpen, setNotifOpen] = useState(false);
 
-  const handleLogout = () => {
+  useEffect(() => {
+    if (!loading && (!user || user.role !== 'patient')) {
+      router.replace('/login?role=patient');
+    }
+  }, [loading, router, user]);
+
+  const handleLogout = async () => {
+    await signOut();
     logout();
-    router.push("/");
+    router.replace('/');
   };
 
   if (!currentPatient) {
@@ -60,11 +70,17 @@ export default function PatientLayout({ children }) {
         {/* Patient Info */}
         <div className="px-4 py-4 border-b border-white/5">
           <div className="flex items-center gap-3 bg-white/5 rounded-xl p-3">
-            <img
-              src={currentPatient.photo}
-              alt={currentPatient.name}
-              className="w-9 h-9 rounded-lg object-cover flex-shrink-0"
-            />
+            {currentPatient.photo ? (
+              <img
+                src={currentPatient.photo}
+                alt={currentPatient.name}
+                className="w-9 h-9 rounded-lg object-cover flex-shrink-0"
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-lg bg-slate-700/70 flex items-center justify-center text-slate-200">
+                <User className="w-4 h-4" />
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <p className="text-white text-sm font-medium truncate">{currentPatient.name}</p>
               <p className="text-slate-400 text-xs">{currentPatient.age} yrs · {currentPatient.bloodType}</p>
@@ -128,9 +144,22 @@ export default function PatientLayout({ children }) {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full" />
             </button>
             <div className="flex items-center gap-2.5">
-              <img src={currentPatient.photo} alt="" className="w-8 h-8 rounded-full object-cover" />
+              {currentPatient.photo ? (
+                <img src={currentPatient.photo} alt="" className="w-8 h-8 rounded-full object-cover" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-slate-700/70 flex items-center justify-center text-slate-200">
+                  <User className="w-4 h-4" />
+                </div>
+              )}
               <div className="hidden sm:block">
-                <p className="text-slate-800 text-sm font-medium leading-none">{currentPatient.name}</p>
+                <button
+                  type="button"
+                  onClick={() => router.push('/profile')}
+                  className="flex items-center gap-2 text-left text-slate-800 text-sm font-medium leading-none hover:text-blue-600 transition"
+                >
+                  <span>{currentPatient.name}</span>
+                  <User className="w-3.5 h-3.5 text-slate-400" />
+                </button>
                 <p className="text-slate-400 text-xs mt-0.5">Patient</p>
               </div>
             </div>

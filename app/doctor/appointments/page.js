@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from "react";
-import { Calendar, Clock, MapPin, CheckCircle, X, AlertCircle } from "lucide-react";
+import { Calendar, Clock, MapPin, CheckCircle, X } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
-import { patients } from "../../../lib/mockData";
+import { getAppointmentsForDoctor, getPatientsForDoctor } from "../../../lib/mockData";
 
 const statusColors = {
   pending: "bg-amber-100 text-amber-800",
@@ -18,36 +18,26 @@ export default function DoctorAppointments() {
 
   if (!currentDoctor) return null;
 
-  const myAppointments = appointments
-    .filter((a) => a.doctorId === currentDoctor.id)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
+  const myAppointments = getAppointmentsForDoctor(currentDoctor, appointments).sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+  const myPatients = getPatientsForDoctor(currentDoctor, appointments);
   const filtered =
     filterStatus === "All"
       ? myAppointments
       : myAppointments.filter((a) => a.status === filterStatus.toLowerCase());
 
-  const handleApprove = (appointmentId) => {
-    updateAppointmentStatus(appointmentId, "scheduled");
-  };
-
-  const handleReject = (appointmentId) => {
-    updateAppointmentStatus(appointmentId, "cancelled");
-  };
-
-  const handleComplete = (appointmentId) => {
-    updateAppointmentStatus(appointmentId, "completed");
-  };
+  const handleApprove = (appointmentId) => updateAppointmentStatus(appointmentId, "scheduled");
+  const handleReject = (appointmentId) => updateAppointmentStatus(appointmentId, "cancelled");
+  const handleComplete = (appointmentId) => updateAppointmentStatus(appointmentId, "completed");
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Appointments</h1>
         <p className="text-slate-500 mt-1">Manage your patient appointments</p>
       </div>
 
-      {/* Filter */}
       <div className="flex gap-2 flex-wrap">
         {["All", "Pending", "Scheduled", "Completed", "Cancelled"].map((status) => (
           <button
@@ -64,7 +54,6 @@ export default function DoctorAppointments() {
         ))}
       </div>
 
-      {/* Appointments List */}
       <div className="space-y-3">
         {filtered.length === 0 ? (
           <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
@@ -72,20 +61,16 @@ export default function DoctorAppointments() {
           </div>
         ) : (
           filtered.map((apt) => {
-            const patient = patients.find((p) => p.id === apt.patientId);
+            const patient = myPatients.find((p) => p.id === apt.patientId);
             return (
               <div key={apt.id} className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
                 <div className="flex gap-4 flex-col md:flex-row">
-                  <img
-                    src={patient?.photo}
-                    alt={patient?.name}
-                    className="w-16 h-16 rounded-lg object-cover"
-                  />
+                  <img src={patient?.photo} alt={patient?.name || "Patient"} className="w-16 h-16 rounded-lg object-cover" />
                   <div className="flex-1">
                     <div className="flex items-center justify-between gap-4 flex-wrap">
                       <div>
-                        <h3 className="font-semibold text-slate-900">{patient?.name}</h3>
-                        <p className="text-sm text-slate-500">{patient?.age} years • {patient?.bloodType}</p>
+                        <h3 className="font-semibold text-slate-900">{patient?.name || "Patient"}</h3>
+                        <p className="text-sm text-slate-500">{patient?.age} years · {patient?.bloodType}</p>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[apt.status]}`}>
                         {apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
@@ -105,9 +90,8 @@ export default function DoctorAppointments() {
                         {apt.location}
                       </div>
                     </div>
-                    {apt.notes && <p className="mt-2 text-sm text-slate-600">📝 {apt.notes}</p>}
-                    
-                    {/* Action Buttons */}
+                    {apt.notes && <p className="mt-2 text-sm text-slate-600">Notes: {apt.notes}</p>}
+
                     <div className="mt-4 flex gap-2 flex-wrap">
                       {apt.status === "pending" && (
                         <>

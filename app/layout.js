@@ -1,5 +1,6 @@
 import './globals.css';
 import { AppProvider } from '../lib/AppContext';
+import { AuthProvider } from '../lib/auth';
 
 export const metadata = {
   title: 'VitalSync | Healthcare Dashboard',
@@ -10,9 +11,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <AppProvider>
-          {children}
-        </AppProvider>
+        <AuthProvider>
+          <AppProvider>
+            {children}
+          </AppProvider>
+        </AuthProvider>
       </body>
     </html>
   );

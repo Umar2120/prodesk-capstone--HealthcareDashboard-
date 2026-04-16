@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Pill, Calendar, FilePlus, AlertCircle } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
-import { prescriptions as allPrescriptions, doctors } from "../../../lib/mockData";
+import { doctors, getPrescriptionsForPatient } from "../../../lib/mockData";
 
 const statusColors = {
   active: "bg-emerald-100 text-emerald-800",
@@ -17,10 +17,9 @@ export default function Prescriptions() {
 
   if (!currentPatient) return null;
 
-  const myPrescriptions = allPrescriptions
-    .filter((p) => p.patientId === currentPatient.id)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
+  const myPrescriptions = getPrescriptionsForPatient(currentPatient).sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
   const filtered =
     selectedStatus === "All"
       ? myPrescriptions
@@ -28,13 +27,11 @@ export default function Prescriptions() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Prescriptions</h1>
         <p className="text-slate-500 mt-1">Manage your medications</p>
       </div>
 
-      {/* Filter */}
       <div className="flex gap-2">
         {["All", "Active", "Expired", "Filled"].map((status) => (
           <button
@@ -51,7 +48,6 @@ export default function Prescriptions() {
         ))}
       </div>
 
-      {/* Prescriptions List */}
       <div className="space-y-4">
         {filtered.length === 0 ? (
           <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
@@ -68,20 +64,19 @@ export default function Prescriptions() {
                       <Pill className="w-5 h-5 text-blue-500" />
                       <h3 className="font-semibold text-slate-900">Prescription #{rx.id}</h3>
                     </div>
-                    <p className="text-sm text-slate-600 mt-1">From {doctor?.name} • {rx.date}</p>
+                    <p className="text-sm text-slate-600 mt-1">From {doctor?.name} · {rx.date}</p>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[rx.status]}`}>
                     {rx.status.charAt(0).toUpperCase() + rx.status.slice(1)}
                   </span>
                 </div>
 
-                {/* Medications */}
                 <div className="space-y-2 bg-slate-50 rounded-lg p-4">
                   {rx.medications.map((med) => (
                     <div key={med.name} className="flex justify-between items-start">
                       <div>
                         <p className="font-medium text-slate-900">{med.name}</p>
-                        <p className="text-sm text-slate-600">{med.dosage} • {med.frequency}</p>
+                        <p className="text-sm text-slate-600">{med.dosage} · {med.frequency}</p>
                         <p className="text-xs text-slate-500 mt-1">{med.instructions}</p>
                       </div>
                       <div className="text-right text-sm text-slate-600">
@@ -91,7 +86,6 @@ export default function Prescriptions() {
                   ))}
                 </div>
 
-                {/* Details */}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center gap-2 text-slate-600">
                     <Calendar className="w-4 h-4" />

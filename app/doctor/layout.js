@@ -13,9 +13,11 @@ import {
   Search,
   ChevronRight,
   Star,
+  User,
 } from "lucide-react";
+import { useAuth } from "../../lib/auth";
 import { useApp } from "../../lib/AppContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const navItems = [
   { to: "/doctor/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -26,13 +28,21 @@ const navItems = [
 
 export default function DoctorLayout({ children }) {
   const { currentDoctor, logout } = useApp();
+  const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [notifOpen, setNotifOpen] = useState(false);
 
-  const handleLogout = () => {
+  useEffect(() => {
+    if (!loading && (!user || user.role !== 'doctor')) {
+      router.replace('/login?role=doctor');
+    }
+  }, [loading, router, user]);
+
+  const handleLogout = async () => {
+    await signOut();
     logout();
-    router.push("/");
+    router.replace('/');
   };
 
   if (!currentDoctor) {
@@ -61,11 +71,17 @@ export default function DoctorLayout({ children }) {
         {/* Doctor Info */}
         <div className="px-4 py-4 border-b border-white/5">
           <div className="flex items-center gap-3 bg-white/5 rounded-xl p-3">
-            <img
-              src={currentDoctor.photo}
-              alt={currentDoctor.name}
-              className="w-9 h-9 rounded-lg object-cover flex-shrink-0"
-            />
+            {currentDoctor.photo ? (
+              <img
+                src={currentDoctor.photo}
+                alt={currentDoctor.name}
+                className="w-9 h-9 rounded-lg object-cover flex-shrink-0"
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-lg bg-slate-700/70 flex items-center justify-center text-slate-200">
+                <User className="w-4 h-4" />
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <p className="text-white text-sm font-medium truncate">{currentDoctor.name}</p>
               <p className="text-slate-400 text-xs">{currentDoctor.specialty}</p>
@@ -129,9 +145,22 @@ export default function DoctorLayout({ children }) {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-teal-500 rounded-full" />
             </button>
             <div className="flex items-center gap-2.5">
-              <img src={currentDoctor.photo} alt="" className="w-8 h-8 rounded-full object-cover" />
+              {currentDoctor.photo ? (
+                <img src={currentDoctor.photo} alt="" className="w-8 h-8 rounded-full object-cover" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-slate-700/70 flex items-center justify-center text-slate-200">
+                  <User className="w-4 h-4" />
+                </div>
+              )}
               <div className="hidden sm:block">
-                <p className="text-slate-800 text-sm font-medium leading-none">{currentDoctor.name}</p>
+                <button
+                  type="button"
+                  onClick={() => router.push('/profile')}
+                  className="flex items-center gap-2 text-left text-slate-800 text-sm font-medium leading-none hover:text-blue-600 transition"
+                >
+                  <span>{currentDoctor.name}</span>
+                  <User className="w-3.5 h-3.5 text-slate-400" />
+                </button>
                 <p className="text-slate-400 text-xs mt-0.5">Physician</p>
               </div>
             </div>

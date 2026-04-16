@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { Clock, Check, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
 
 const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -26,7 +26,6 @@ export default function DoctorAvailability() {
     Friday: true,
     Saturday: false,
   });
-
   const [slots, setSlots] = useState({
     Monday: [...timeSlots],
     Tuesday: [...timeSlots],
@@ -43,6 +42,7 @@ export default function DoctorAvailability() {
       ...prev,
       [day]: !prev[day],
     }));
+
     if (!availability[day]) {
       setSlots((prev) => ({
         ...prev,
@@ -62,21 +62,18 @@ export default function DoctorAvailability() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Availability</h1>
         <p className="text-slate-500 mt-1">Manage your schedule and available time slots</p>
       </div>
 
-      {/* Current Status */}
       <div className="bg-blue-50 rounded-xl border border-blue-200 p-4">
         <p className="text-blue-900">
-          <span className="font-semibold">Current Status:</span> {currentDoctor.available ? "✓ Available" : "✗ Unavailable"}
+          <span className="font-semibold">Current Status:</span> {currentDoctor.available ? "Available" : "Unavailable"}
         </p>
         <p className="text-blue-800 text-sm mt-1">Next available: {currentDoctor.nextAvailable}</p>
       </div>
 
-      {/* Schedule */}
       <div className="space-y-4">
         {daysOfWeek.map((day) => (
           <div key={day} className="bg-white rounded-xl border border-slate-200 p-5">
@@ -116,7 +113,6 @@ export default function DoctorAvailability() {
         ))}
       </div>
 
-      {/* Save Button */}
       <div className="flex gap-4">
         <button className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
           <Check className="w-4 h-4" />
