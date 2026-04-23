@@ -3,9 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "predev": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"if (Test-Path .next) { Remove-Item -LiteralPath .next -Recurse -Force }\"",
     "dev": "next dev",
-    "prebuild": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"if (Test-Path .next) { Remove-Item -LiteralPath .next -Recurse -Force }\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

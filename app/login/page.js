@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 import { toast } from 'sonner';
 
+export const dynamic = 'force-dynamic';
+
 const roleContent = {
   patient: {
     accent: 'bg-sky-400',
