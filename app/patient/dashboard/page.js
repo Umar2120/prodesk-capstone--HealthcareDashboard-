@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
@@ -17,29 +18,42 @@ import {
   User,
 } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
+import AppointmentStatusChart from "../../../lib/AppointmentStatusChart";
 import {
-  doctors,
-  getAppointmentsForPatient,
+  formatAppointmentDate,
+  getAppointmentStatusCounts,
+  getStatusLabel,
+  statusColors,
+} from "../../../lib/appointments";
+import {
   getPatientDataSeed,
-  getPrescriptionsForPatient,
   vitalSigns,
 } from "../../../lib/mockData";
 
 export default function PatientDashboard() {
-  const { currentPatient } = useApp();
+  const { currentPatient, appointments, appointmentsLoading, appointmentsError, prescriptions } = useApp();
   const router = useRouter();
 
   if (!currentPatient) return null;
 
   const patientProfile = getPatientDataSeed(currentPatient);
   const displayName = patientProfile.name.split(" ")[0];
-  const myAppts = getAppointmentsForPatient(currentPatient).sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  
+  // Use real appointments from Supabase
+  const myAppts = useMemo(() => 
+    [...appointments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [appointments]
   );
+  
   const upcoming = myAppts.filter((a) => a.status === "scheduled");
-  const activePrescriptions = getPrescriptionsForPatient(currentPatient).filter(
-    (p) => p.status === "active"
+  
+  // Use real prescriptions from Supabase
+  const activePrescriptions = useMemo(() => 
+    prescriptions.filter((p) => p.status === "active"),
+    [prescriptions]
   );
+  
+  const appointmentSummary = getAppointmentStatusCounts(myAppts);
 
   const latestVitals = vitalSigns[vitalSigns.length - 1];
   const prevVitals = vitalSigns[vitalSigns.length - 2];
@@ -125,11 +139,17 @@ export default function PatientDashboard() {
         </div>
       )}
 
+      {appointmentsError && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {appointmentsError}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: "Upcoming Appointments", value: upcoming.length, icon: Calendar, color: "text-blue-500", bg: "bg-blue-50", action: () => router.push("/patient/appointments") },
           { label: "Active Prescriptions", value: activePrescriptions.length, icon: Pill, color: "text-violet-500", bg: "bg-violet-50", action: () => router.push("/patient/prescriptions") },
-          { label: "Active Conditions", value: patientProfile.conditions.length, icon: Activity, color: "text-rose-500", bg: "bg-rose-50", action: () => router.push("/patient/history") },
+          { label: "Pending Requests", value: appointmentSummary.pending, icon: Activity, color: "text-rose-500", bg: "bg-rose-50", action: () => router.push("/patient/appointments") },
           { label: "Last Visit", value: "Mar 28", icon: Clock, color: "text-teal-500", bg: "bg-teal-50", action: () => router.push("/patient/history") },
         ].map((stat) => (
           <button
@@ -180,17 +200,15 @@ export default function PatientDashboard() {
         <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-slate-900 font-semibold">Blood Pressure Trend</h3>
-              <p className="text-slate-400 text-xs mt-0.5">Last 6 readings</p>
+              <h3 className="text-slate-900 font-semibold">Appointment Status Overview</h3>
+              <p className="text-slate-400 text-xs mt-0.5">Live from your Supabase appointments</p>
             </div>
             <div className="flex items-center gap-3 text-xs text-slate-500">
-              <span className="flex items-center gap-1.5"><span className="w-3 h-1 bg-blue-500 rounded inline-block" />Systolic</span>
-              <span className="flex items-center gap-1.5"><span className="w-3 h-1 bg-teal-400 rounded inline-block" />Diastolic</span>
+              <span>{myAppts.length} total</span>
+              <span>{appointmentSummary.pending} pending</span>
             </div>
           </div>
-          <div className="h-40 flex items-center justify-center text-slate-400 text-sm">
-            Chart Placeholder (Install recharts for full chart)
-          </div>
+          <AppointmentStatusChart appointments={myAppts} />
         </div>
 
         <div className="bg-white border border-slate-100 rounded-2xl p-5">
@@ -203,29 +221,84 @@ export default function PatientDashboard() {
               View all <ChevronRight className="w-3 h-3" />
             </button>
           </div>
-          {upcoming.length === 0 ? (
+          {appointmentsLoading ? (
+            <p className="text-slate-400 text-sm text-center py-6">Loading appointments...</p>
+          ) : upcoming.length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-6">No upcoming appointments</p>
           ) : (
             <div className="space-y-3">
-              {upcoming.slice(0, 3).map((appt) => {
-                const doc = doctors.find((d) => d.id === appt.doctorId);
-                return (
-                  <div key={appt.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
-                    <img src={doc?.photo} alt={doc?.name || "Doctor"} className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-slate-800 text-sm font-medium truncate">{doc?.name || "Doctor"}</p>
-                      <p className="text-slate-400 text-xs">{doc?.specialty || "General Medicine"}</p>
-                      <div className="flex items-center gap-1.5 mt-1.5">
-                        <Calendar className="w-3 h-3 text-blue-400" />
-                        <span className="text-blue-600 text-xs">{appt.date} · {appt.time}</span>
-                      </div>
+              {upcoming.slice(0, 3).map((appointment) => (
+                <div key={appointment.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
+                  <img src={appointment.doctorPhoto} alt={appointment.doctorName || "Doctor"} className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-slate-800 text-sm font-medium truncate">{appointment.doctorName || "Doctor"}</p>
+                    <p className="text-slate-400 text-xs">{appointment.doctorSpecialty || "General Medicine"}</p>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <Calendar className="w-3 h-3 text-blue-400" />
+                      <span className="text-blue-600 text-xs">{formatAppointmentDate(appointment.date)} · {appointment.time}</span>
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           )}
         </div>
+      </div>
+
+      <div className="bg-white border border-slate-100 rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-slate-900 font-semibold">Cloud Appointments</h3>
+            <p className="text-slate-400 text-xs mt-0.5">Fetched for {patientProfile.email}</p>
+          </div>
+          <button
+            onClick={() => router.push("/patient/appointments")}
+            className="text-blue-500 text-xs font-medium hover:text-blue-600 flex items-center gap-0.5"
+          >
+            Manage <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+
+        {appointmentsLoading ? (
+          <div className="py-10 text-center text-sm text-slate-400">Loading your appointments...</div>
+        ) : myAppts.length === 0 ? (
+          <div className="py-10 text-center text-sm text-slate-400">No cloud appointments yet. Book your first visit to populate this table.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
+              <thead>
+                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-[0.18em] text-slate-400">
+                  <th className="px-2 py-3 font-medium">Doctor</th>
+                  <th className="px-2 py-3 font-medium">Date</th>
+                  <th className="px-2 py-3 font-medium">Type</th>
+                  <th className="px-2 py-3 font-medium">Status</th>
+                  <th className="px-2 py-3 font-medium">Location</th>
+                </tr>
+              </thead>
+              <tbody>
+                {myAppts.slice(0, 5).map((appointment) => (
+                  <tr key={appointment.id} className="border-b border-slate-50 text-sm text-slate-600">
+                    <td className="px-2 py-3">
+                      <div className="font-medium text-slate-900">{appointment.doctorName}</div>
+                      <div className="text-xs text-slate-400">{appointment.doctorSpecialty}</div>
+                    </td>
+                    <td className="px-2 py-3">
+                      <div className="font-medium text-slate-900">{formatAppointmentDate(appointment.date)}</div>
+                      <div className="text-xs text-slate-400">{appointment.time}</div>
+                    </td>
+                    <td className="px-2 py-3">{appointment.type}</td>
+                    <td className="px-2 py-3">
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${statusColors[appointment.status]}`}>
+                        {getStatusLabel(appointment.status)}
+                      </span>
+                    </td>
+                    <td className="px-2 py-3 text-xs text-slate-500">{appointment.location}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="bg-white border border-slate-100 rounded-2xl p-5">

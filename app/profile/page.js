@@ -10,7 +10,7 @@ import { supabase } from '../../lib/supabaseClient';
 export default function ProfilePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const { currentDoctor, currentPatient, setCurrentDoctor, setCurrentPatient } = useApp();
+  const { currentDoctor, currentPatient, setCurrentDoctor, setCurrentPatient, syncDoctorProfile } = useApp();
   const profile = currentDoctor || currentPatient;
   const isDoctor = Boolean(currentDoctor);
   const dashboardPath = isDoctor ? '/doctor/dashboard' : '/patient/dashboard';
@@ -80,9 +80,8 @@ export default function ProfilePage() {
       },
     });
 
-    setSubmitting(false);
-
     if (result.error) {
+      setSubmitting(false);
       setError(result.error.message || 'Unable to update profile.');
       return;
     }
@@ -97,18 +96,25 @@ export default function ProfilePage() {
     };
 
     if (isDoctor) {
-      setCurrentDoctor(updatedProfile);
+      const doctorSync = await syncDoctorProfile(updatedProfile);
+      if (doctorSync.error) {
+        setSubmitting(false);
+        setError(doctorSync.error.message || 'Unable to update doctor directory profile.');
+        return;
+      }
+      setCurrentDoctor(doctorSync.data);
     } else {
       setCurrentPatient(updatedProfile);
     }
 
+    setSubmitting(false);
     setStatusMessage('Profile updated successfully.');
   };
 
   if (!profile) {
     return (
       <div className="min-h-screen bg-[#081a3c] text-white flex items-center justify-center">
-        <p>Loading profile…</p>
+        <p>Loading profile...</p>
       </div>
     );
   }
@@ -223,7 +229,7 @@ export default function ProfilePage() {
               className="inline-flex items-center justify-center gap-2 rounded-3xl bg-gradient-to-r from-sky-500 to-cyan-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-[0_15px_40px_rgba(56,189,248,0.2)] transition hover:from-sky-400 hover:to-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Save className="w-4 h-4" />
-              {submitting ? 'Saving…' : 'Save changes'}
+              {submitting ? 'Saving...' : 'Save changes'}
             </button>
           </form>
         </div>

@@ -27,7 +27,7 @@ const navItems = [
 ];
 
 export default function DoctorLayout({ children }) {
-  const { currentDoctor, logout } = useApp();
+  const { currentDoctor, logout, registeredDoctorsLoading, registeredDoctorsError } = useApp();
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -45,7 +45,15 @@ export default function DoctorLayout({ children }) {
     router.replace('/');
   };
 
-  if (!currentDoctor) {
+  const doctorProfile = currentDoctor || (user
+    ? {
+        name: user.name?.startsWith('Dr.') ? user.name : `Dr. ${user.name || user.email?.split('@')[0] || 'Doctor'}`,
+        specialty: 'General Medicine',
+        photo: user.photo || '',
+      }
+    : null);
+
+  if (loading || (registeredDoctorsLoading && !doctorProfile)) {
     return (
       <div className="flex h-screen bg-slate-50 items-center justify-center">
         <div className="text-slate-600">Loading...</div>
@@ -71,10 +79,10 @@ export default function DoctorLayout({ children }) {
         {/* Doctor Info */}
         <div className="px-4 py-4 border-b border-white/5">
           <div className="flex items-center gap-3 bg-white/5 rounded-xl p-3">
-            {currentDoctor.photo ? (
+            {doctorProfile?.photo ? (
               <img
-                src={currentDoctor.photo}
-                alt={currentDoctor.name}
+                src={doctorProfile.photo}
+                alt={doctorProfile.name}
                 className="w-9 h-9 rounded-lg object-cover flex-shrink-0"
               />
             ) : (
@@ -83,8 +91,8 @@ export default function DoctorLayout({ children }) {
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <p className="text-white text-sm font-medium truncate">{currentDoctor.name}</p>
-              <p className="text-slate-400 text-xs">{currentDoctor.specialty}</p>
+              <p className="text-white text-sm font-medium truncate">{doctorProfile?.name || 'Doctor'}</p>
+              <p className="text-slate-400 text-xs">{doctorProfile?.specialty || 'General Medicine'}</p>
             </div>
           </div>
         </div>
@@ -145,8 +153,8 @@ export default function DoctorLayout({ children }) {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-teal-500 rounded-full" />
             </button>
             <div className="flex items-center gap-2.5">
-              {currentDoctor.photo ? (
-                <img src={currentDoctor.photo} alt="" className="w-8 h-8 rounded-full object-cover" />
+              {doctorProfile?.photo ? (
+                <img src={doctorProfile.photo} alt="" className="w-8 h-8 rounded-full object-cover" />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-slate-700/70 flex items-center justify-center text-slate-200">
                   <User className="w-4 h-4" />
@@ -158,7 +166,7 @@ export default function DoctorLayout({ children }) {
                   onClick={() => router.push('/profile')}
                   className="flex items-center gap-2 text-left text-slate-800 text-sm font-medium leading-none hover:text-blue-600 transition"
                 >
-                  <span>{currentDoctor.name}</span>
+                  <span>{doctorProfile?.name || 'Doctor'}</span>
                   <User className="w-3.5 h-3.5 text-slate-400" />
                 </button>
                 <p className="text-slate-400 text-xs mt-0.5">Physician</p>
@@ -169,6 +177,11 @@ export default function DoctorLayout({ children }) {
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto">
+          {registeredDoctorsError ? (
+            <div className="border-b border-amber-200 bg-amber-50 px-6 py-3 text-sm text-amber-800">
+              {registeredDoctorsError}
+            </div>
+          ) : null}
           {children}
         </main>
       </div>

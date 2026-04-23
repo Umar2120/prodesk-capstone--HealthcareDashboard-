@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from "react";
-import { Pill, Calendar, FilePlus, AlertCircle } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Pill, Calendar, FilePlus, AlertCircle, Loader2 } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
-import { doctors, getPrescriptionsForPatient } from "../../../lib/mockData";
 
 const statusColors = {
   active: "bg-emerald-100 text-emerald-800",
@@ -12,18 +11,20 @@ const statusColors = {
 };
 
 export default function Prescriptions() {
-  const { currentPatient } = useApp();
+  const { currentPatient, prescriptions, prescriptionsLoading, prescriptionsError } = useApp();
   const [selectedStatus, setSelectedStatus] = useState("All");
 
   if (!currentPatient) return null;
 
-  const myPrescriptions = getPrescriptionsForPatient(currentPatient).sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-  const filtered =
-    selectedStatus === "All"
-      ? myPrescriptions
-      : myPrescriptions.filter((p) => p.status === selectedStatus.toLowerCase());
+  // Memoized filtered prescriptions
+  const filtered = useMemo(() => {
+    const sorted = [...prescriptions].sort(
+      (a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime()
+    );
+    
+    if (selectedStatus === "All") return sorted;
+    return sorted.filter((p) => p.status === selectedStatus.toLowerCase());
+  }, [prescriptions, selectedStatus]);
 
   return (
     <div className="p-6 space-y-6">
@@ -31,6 +32,12 @@ export default function Prescriptions() {
         <h1 className="text-3xl font-bold text-slate-900">Prescriptions</h1>
         <p className="text-slate-500 mt-1">Manage your medications</p>
       </div>
+
+      {prescriptionsError && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {prescriptionsError}
+        </div>
+      )}
 
       <div className="flex gap-2">
         {["All", "Active", "Expired", "Filled"].map((status) => (
@@ -48,66 +55,73 @@ export default function Prescriptions() {
         ))}
       </div>
 
-      <div className="space-y-4">
-        {filtered.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-            <p className="text-slate-500">No prescriptions found</p>
-          </div>
-        ) : (
-          filtered.map((rx) => {
-            const doctor = doctors.find((d) => d.id === rx.doctorId);
-            return (
-              <div key={rx.id} className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Pill className="w-5 h-5 text-blue-500" />
-                      <h3 className="font-semibold text-slate-900">Prescription #{rx.id}</h3>
-                    </div>
-                    <p className="text-sm text-slate-600 mt-1">From {doctor?.name} · {rx.date}</p>
+      {prescriptionsLoading ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+          <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-4" />
+          <p className="text-slate-500">Loading prescriptions...</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+          <Pill className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <p className="text-slate-500">No prescriptions found</p>
+          <p className="text-slate-400 text-sm mt-2">Your prescriptions from doctors will appear here.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filtered.map((rx) => (
+            <div key={rx.id} className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Pill className="w-5 h-5 text-blue-500" />
+                    <h3 className="font-semibold text-slate-900">{rx.medicineName}</h3>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[rx.status]}`}>
-                    {rx.status.charAt(0).toUpperCase() + rx.status.slice(1)}
-                  </span>
+                  <p className="text-sm text-slate-600 mt-1">From Dr. {rx.doctorName} · {new Date(rx.createdAt).toLocaleDateString()}</p>
                 </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[rx.status]}`}>
+                  {rx.status.charAt(0).toUpperCase() + rx.status.slice(1)}
+                </span>
+              </div>
 
-                <div className="space-y-2 bg-slate-50 rounded-lg p-4">
-                  {rx.medications.map((med) => (
-                    <div key={med.name} className="flex justify-between items-start">
-                      <div>
-                        <p className="font-medium text-slate-900">{med.name}</p>
-                        <p className="text-sm text-slate-600">{med.dosage} · {med.frequency}</p>
-                        <p className="text-xs text-slate-500 mt-1">{med.instructions}</p>
-                      </div>
-                      <div className="text-right text-sm text-slate-600">
-                        <p>{med.refills} refills</p>
-                      </div>
-                    </div>
-                  ))}
+              <div className="space-y-2 bg-slate-50 rounded-lg p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-medium text-slate-900">{rx.medicineName}</p>
+                    <p className="text-sm text-slate-600">{rx.dosage} · {rx.frequency}</p>
+                    {rx.instructions && (
+                      <p className="text-xs text-slate-500 mt-1">{rx.instructions}</p>
+                    )}
+                  </div>
+                  <div className="text-right text-sm text-slate-600">
+                    <p>{rx.refills || 0} refills</p>
+                  </div>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                {rx.duration && (
                   <div className="flex items-center gap-2 text-slate-600">
                     <Calendar className="w-4 h-4" />
-                    <span>Expires: {rx.expiryDate}</span>
+                    <span>Duration: {rx.duration}</span>
                   </div>
+                )}
+                {rx.pharmacy && (
                   <div className="flex items-center gap-2 text-slate-600">
                     <FilePlus className="w-4 h-4" />
                     <span>{rx.pharmacy}</span>
                   </div>
-                </div>
-
-                {rx.notes && (
-                  <div className="bg-blue-50 rounded-lg p-3 flex gap-2">
-                    <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-blue-800">{rx.notes}</p>
-                  </div>
                 )}
               </div>
-            );
-          })
-        )}
-      </div>
+
+              {rx.notes && (
+                <div className="text-sm text-slate-600 bg-amber-50 rounded-lg p-3">
+                  <strong>Note:</strong> {rx.notes}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

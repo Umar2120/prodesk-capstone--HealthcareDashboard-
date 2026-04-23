@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
+import { toast } from 'sonner';
 
 const roleContent = {
   patient: {
@@ -18,10 +19,10 @@ const roleContent = {
   },
 };
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading, signIn } = useAuth();
+  const { user, signIn, signOut } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -32,26 +33,26 @@ export default function LoginPage() {
     return value === 'doctor' ? 'doctor' : 'patient';
   }, [searchParams]);
 
-  useEffect(() => {
-    if (!loading && user) {
-      router.replace(`/${user.role || role}/dashboard`);
-    }
-  }, [loading, role, router, user]);
-
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setIsSubmitting(true);
+
+    if (user) {
+      await signOut();
+    }
 
     const result = await signIn(email.trim(), password);
     setIsSubmitting(false);
 
     if (result.error) {
       setError(result.error.message || 'Unable to sign in.');
+      toast.error(result.error.message || 'Unable to sign in.');
       return;
     }
 
     const signedInRole = result.data?.session?.user?.user_metadata?.role || role;
+    toast.success(`Welcome back! Signed in as ${signedInRole}.`);
     router.replace(`/${signedInRole}/dashboard`);
   };
 
@@ -98,6 +99,11 @@ export default function LoginPage() {
             <div>
               <h1 className="text-3xl font-semibold tracking-tight text-white">Welcome back</h1>
               <p className="mt-2 text-slate-400">{currentRoleContent.description}</p>
+              {user ? (
+                <p className="mt-3 text-sm text-amber-300">
+                  A session is already active. Signing in here will switch accounts.
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -144,5 +150,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#081a3c]" />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

@@ -1,12 +1,27 @@
 'use client';
 
-import { useState } from "react";
-import { Calendar, Clock, MapPin, CheckCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Calendar, Clock, MapPin, CheckCircle, Pencil, Trash2 } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
-import { doctors, getAppointmentsForPatient, getPatientDataSeed } from "../../../lib/mockData";
+import {
+  formatAppointmentDate,
+  getStatusLabel,
+  statusColors,
+} from "../../../lib/appointments";
 
 export default function Appointments() {
-  const { currentPatient, appointments, bookAppointment } = useApp();
+  const {
+    currentPatient,
+    appointments,
+    appointmentsLoading,
+    appointmentsError,
+    registeredDoctors,
+    registeredDoctorsLoading,
+    registeredDoctorsError,
+    bookAppointment,
+    editAppointment,
+    deleteAppointment,
+  } = useApp();
   const [filterStatus, setFilterStatus] = useState("All");
   const [showBooking, setShowBooking] = useState(false);
   const [bookingStep, setBookingStep] = useState(1);
@@ -16,24 +31,32 @@ export default function Appointments() {
   const [appointmentType, setAppointmentType] = useState("Consultation");
   const [notes, setNotes] = useState("");
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingError, setBookingError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [editingAppointmentId, setEditingAppointmentId] = useState("");
+  const [deletingAppointmentId, setDeletingAppointmentId] = useState("");
+
+  useEffect(() => {
+    if (!editingAppointmentId || selectedDoctor || registeredDoctors.length === 0) return;
+
+    const appointment = appointments.find((item) => item.id === editingAppointmentId);
+    if (!appointment) return;
+
+    const matchedDoctor = registeredDoctors.find((doctor) => doctor.id === appointment.doctorId);
+    if (matchedDoctor) {
+      setSelectedDoctor(matchedDoctor);
+    }
+  }, [appointments, editingAppointmentId, registeredDoctors, selectedDoctor]);
 
   if (!currentPatient) return null;
 
-  const patientProfile = getPatientDataSeed(currentPatient);
-  const myAppointments = getAppointmentsForPatient(patientProfile, appointments).sort(
+  const myAppointments = [...appointments].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
   const filtered =
     filterStatus === "All"
       ? myAppointments
       : myAppointments.filter((a) => a.status === filterStatus.toLowerCase());
-
-  const statusColors = {
-    pending: "bg-amber-100 text-amber-800",
-    scheduled: "bg-blue-100 text-blue-800",
-    completed: "bg-emerald-100 text-emerald-800",
-    cancelled: "bg-red-100 text-red-800",
-  };
 
   const statusDescriptions = {
     pending: "Awaiting doctor confirmation",
@@ -44,29 +67,81 @@ export default function Appointments() {
 
   const appointmentTypes = ["Consultation", "Follow-up", "Check-up", "Lab Work"];
 
-  const handleBookAppointment = () => {
-    if (selectedDoctor && selectedDate && selectedTime) {
-      bookAppointment({
-        patientId: patientProfile.id,
-        doctorId: selectedDoctor.id,
-        date: selectedDate,
-        time: selectedTime,
-        type: appointmentType,
-        notes,
-        status: "pending",
-      });
+  const resetBookingFlow = () => {
+    setShowBooking(false);
+    setBookingStep(1);
+    setSelectedDoctor(null);
+    setSelectedDate("");
+    setSelectedTime("");
+    setNotes("");
+    setBookingError("");
+    setSubmitting(false);
+    setEditingAppointmentId("");
+  };
 
-      setBookingSuccess(true);
+  const openEditFlow = (appointment) => {
+    const doctor = registeredDoctors.find((item) => item.id === appointment.doctorId) || null;
+    setEditingAppointmentId(appointment.id);
+    setSelectedDoctor(doctor);
+    setSelectedDate(appointment.date);
+    setSelectedTime(appointment.time);
+    setAppointmentType(appointment.type);
+    setNotes(appointment.notes || "");
+    setBookingError("");
+    setBookingSuccess(false);
+    setShowBooking(true);
+    setBookingStep(doctor ? 2 : 1);
+  };
 
-      setTimeout(() => {
-        setShowBooking(false);
-        setBookingStep(1);
-        setSelectedDoctor(null);
-        setSelectedDate("");
-        setSelectedTime("");
-        setNotes("");
-        setBookingSuccess(false);
-      }, 2000);
+  const handleBookAppointment = async () => {
+    if (!selectedDoctor || !selectedDate || !selectedTime) return;
+
+    setSubmitting(true);
+    setBookingError("");
+
+    const action = editingAppointmentId
+      ? editAppointment(editingAppointmentId, {
+          doctorId: selectedDoctor.id,
+          date: selectedDate,
+          time: selectedTime,
+          type: appointmentType,
+          notes,
+        })
+      : bookAppointment({
+          doctorId: selectedDoctor.id,
+          date: selectedDate,
+          time: selectedTime,
+          type: appointmentType,
+          notes,
+        });
+
+    const result = await action;
+
+    setSubmitting(false);
+
+    if (result.error) {
+      setBookingError(result.error.message || "Unable to save your appointment right now.");
+      return;
+    }
+
+    setBookingSuccess(true);
+
+    setTimeout(() => {
+      resetBookingFlow();
+      setBookingSuccess(false);
+    }, 2000);
+  };
+
+  const handleDeleteAppointment = async (appointmentId) => {
+    const shouldDelete = window.confirm("Are you sure you want to delete this appointment?");
+    if (!shouldDelete) return;
+
+    setDeletingAppointmentId(appointmentId);
+    const result = await deleteAppointment(appointmentId);
+    setDeletingAppointmentId("");
+
+    if (result.error) {
+      setBookingError(result.error.message || "Unable to delete this appointment right now.");
     }
   };
 
@@ -79,29 +154,47 @@ export default function Appointments() {
 
       <div className="flex gap-3">
         <button
-          onClick={() => setShowBooking(!showBooking)}
+          onClick={() => {
+            setBookingSuccess(false);
+            resetBookingFlow();
+            setShowBooking(true);
+          }}
           className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
         >
           Book Appointment
         </button>
       </div>
 
+      {(appointmentsError || registeredDoctorsError || bookingError) && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {appointmentsError || registeredDoctorsError || bookingError}
+        </div>
+      )}
+
       {showBooking && bookingSuccess && (
         <div className="bg-white rounded-xl border border-emerald-200 p-8 text-center bg-emerald-50">
           <div className="mb-4 flex justify-center">
             <CheckCircle className="w-12 h-12 text-emerald-600" />
           </div>
-          <h2 className="text-2xl font-bold text-emerald-900 mb-2">Appointment Booked!</h2>
-          <p className="text-emerald-700">Your appointment is pending doctor approval. You'll be notified once confirmed.</p>
+          <h2 className="text-2xl font-bold text-emerald-900 mb-2">
+            {editingAppointmentId ? "Appointment Updated!" : "Appointment Booked!"}
+          </h2>
+          <p className="text-emerald-700">
+            {editingAppointmentId
+              ? "Your appointment changes were saved successfully."
+              : "Your appointment is pending doctor approval. You'll be notified once confirmed."}
+          </p>
         </div>
       )}
 
       {showBooking && !bookingSuccess && (
         <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-slate-900">Book an Appointment</h2>
+            <h2 className="text-xl font-bold text-slate-900">
+              {editingAppointmentId ? "Edit Appointment" : "Book an Appointment"}
+            </h2>
             <button
-              onClick={() => setShowBooking(false)}
+              onClick={resetBookingFlow}
               className="text-slate-500 hover:text-slate-700 text-2xl"
             >
               x
@@ -128,31 +221,47 @@ export default function Appointments() {
           {bookingStep === 1 && (
             <div className="space-y-4">
               <h3 className="font-semibold text-slate-900">Select a Doctor</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
-                {doctors.map((doctor) => (
-                  <button
-                    key={doctor.id}
-                    onClick={() => {
-                      setSelectedDoctor(doctor);
-                      setBookingStep(2);
-                    }}
-                    className={`p-4 text-left rounded-lg border-2 transition-all ${
-                      selectedDoctor?.id === doctor.id
-                        ? "border-blue-600 bg-blue-50"
-                        : "border-slate-200 hover:border-blue-300"
-                    }`}
-                  >
-                    <div className="flex gap-3">
-                      <img src={doctor.photo} alt={doctor.name} className="w-12 h-12 rounded object-cover" />
-                      <div>
-                        <p className="font-semibold text-slate-900 text-sm">{doctor.name}</p>
-                        <p className="text-xs text-slate-600">{doctor.specialty}</p>
-                        <p className="text-xs text-amber-600">Rating: {doctor.rating}</p>
+              {registeredDoctorsLoading ? (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 text-center text-slate-500">
+                  Loading registered doctors...
+                </div>
+              ) : registeredDoctors.length === 0 ? (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 text-center text-slate-500">
+                  No registered doctors are available yet.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                  {registeredDoctors.map((doctor) => (
+                    <button
+                      key={doctor.id}
+                      onClick={() => {
+                        setSelectedDoctor(doctor);
+                        setBookingStep(2);
+                      }}
+                      className={`p-4 text-left rounded-lg border-2 transition-all ${
+                        selectedDoctor?.id === doctor.id
+                          ? "border-blue-600 bg-blue-50"
+                          : "border-slate-200 hover:border-blue-300"
+                      }`}
+                    >
+                      <div className="flex gap-3">
+                        {doctor.photo ? (
+                          <img src={doctor.photo} alt={doctor.name} className="w-12 h-12 rounded object-cover" />
+                        ) : (
+                          <div className="w-12 h-12 rounded bg-slate-100 flex items-center justify-center text-slate-400 text-[10px]">
+                            No Photo
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-semibold text-slate-900 text-sm">{doctor.name}</p>
+                          <p className="text-xs text-slate-600">{doctor.specialty}</p>
+                          <p className="text-xs text-amber-600">Rating: {doctor.rating.toFixed(1)}</p>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
+                    </button>
+                  ))}
+                </div>
+              )}
               <button
                 onClick={() => setBookingStep(2)}
                 disabled={!selectedDoctor}
@@ -261,7 +370,9 @@ export default function Appointments() {
               >
                 Back
               </button>
-              <h3 className="font-semibold text-slate-900">Review Appointment</h3>
+              <h3 className="font-semibold text-slate-900">
+                {editingAppointmentId ? "Review Changes" : "Review Appointment"}
+              </h3>
 
               <div className="bg-slate-50 rounded-lg p-4 space-y-3">
                 <div className="flex justify-between">
@@ -286,7 +397,9 @@ export default function Appointments() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Status</span>
-                  <span className="font-medium text-amber-700">Pending Approval</span>
+                  <span className="font-medium text-amber-700">
+                    {editingAppointmentId ? "Will remain unchanged" : "Pending Approval"}
+                  </span>
                 </div>
               </div>
 
@@ -299,12 +412,18 @@ export default function Appointments() {
                 </button>
                 <button
                   onClick={handleBookAppointment}
-                  className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 flex items-center justify-center gap-2"
+                  disabled={submitting}
+                  className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <CheckCircle className="w-4 h-4" />
-                  Confirm Booking
+                  {submitting
+                    ? "Saving..."
+                    : editingAppointmentId
+                      ? "Save Changes"
+                      : "Confirm Booking"}
                 </button>
               </div>
+              {bookingError && <p className="text-sm text-rose-600">{bookingError}</p>}
             </div>
           )}
         </div>
@@ -326,53 +445,91 @@ export default function Appointments() {
         ))}
       </div>
 
-      <div className="space-y-3">
-        {filtered.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-            <p className="text-slate-500">No appointments found</p>
-          </div>
-        ) : (
-          filtered.map((apt) => {
-            const doctor = doctors.find((d) => d.id === apt.doctorId);
-            return (
-              <div key={apt.id} className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
-                <div className="flex gap-4">
-                  <img src={doctor?.photo} alt={doctor?.name || "Doctor"} className="w-16 h-16 rounded-lg object-cover" />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between gap-4 flex-wrap">
-                      <div>
-                        <h3 className="font-semibold text-slate-900">{doctor?.name || "Doctor"}</h3>
-                        <p className="text-sm text-slate-500">{doctor?.specialty || "General Medicine"}</p>
+      {appointmentsLoading ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+          <p className="text-slate-500">Loading appointments from Supabase...</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.length === 0 ? (
+            <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+              <p className="text-slate-500">No appointments found</p>
+            </div>
+          ) : (
+            filtered.map((apt) => {
+              const doctor = registeredDoctors.find((d) => d.id === apt.doctorId) || {
+                name: apt.doctorName,
+                specialty: apt.doctorSpecialty,
+                photo: apt.doctorPhoto,
+              };
+              const canManage = apt.status === "pending" || apt.status === "scheduled";
+
+              return (
+                <div key={apt.id} className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
+                  <div className="flex gap-4">
+                    {doctor.photo ? (
+                      <img src={doctor.photo} alt={doctor.name || "Doctor"} className="w-16 h-16 rounded-lg object-cover" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 text-xs">
+                        No Photo
                       </div>
-                      <div className="text-right">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium inline-block ${statusColors[apt.status]}`}>
-                          {apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
-                        </span>
-                        <p className="text-xs text-slate-500 mt-1">{statusDescriptions[apt.status]}</p>
+                    )}
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <div>
+                          <h3 className="font-semibold text-slate-900">{doctor.name || "Doctor"}</h3>
+                          <p className="text-sm text-slate-500">{doctor.specialty || "General Medicine"}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium inline-block ${statusColors[apt.status]}`}>
+                            {getStatusLabel(apt.status)}
+                          </span>
+                          <p className="text-xs text-slate-500 mt-1">{statusDescriptions[apt.status]}</p>
+                        </div>
                       </div>
+                      <div className="mt-3 flex gap-4 text-sm text-slate-600 flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          {formatAppointmentDate(apt.date)}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          {apt.time}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-4 h-4" />
+                          {apt.location}
+                        </div>
+                      </div>
+                      {apt.notes && <p className="mt-2 text-sm text-slate-600">Notes: {apt.notes}</p>}
+
+                      {canManage ? (
+                        <div className="mt-4 flex gap-2 flex-wrap">
+                          <button
+                            onClick={() => openEditFlow(apt)}
+                            className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                          >
+                            <Pencil className="w-4 h-4" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAppointment(apt.id)}
+                            disabled={deletingAppointmentId === apt.id}
+                            className="inline-flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            {deletingAppointmentId === apt.id ? "Deleting..." : "Delete"}
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
-                    <div className="mt-3 flex gap-4 text-sm text-slate-600 flex-wrap">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {apt.date}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {apt.time}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-4 h-4" />
-                        {apt.location}
-                      </div>
-                    </div>
-                    {apt.notes && <p className="mt-2 text-sm text-slate-600">Notes: {apt.notes}</p>}
                   </div>
                 </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+              );
+            })
+          )}
+        </div>
+      )}
     </div>
   );
 }

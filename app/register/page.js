@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
+import { toast } from 'sonner';
 
 const roleContent = {
   patient: {
@@ -18,10 +19,10 @@ const roleContent = {
   },
 };
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading, signUp } = useAuth();
+  const { user, signUp, signOut } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -34,12 +35,6 @@ export default function RegisterPage() {
     return value === 'doctor' ? 'doctor' : 'patient';
   }, [searchParams]);
 
-  useEffect(() => {
-    if (!loading && user) {
-      router.replace(`/${user.role || role}/dashboard`);
-    }
-  }, [loading, role, router, user]);
-
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
@@ -51,21 +46,29 @@ export default function RegisterPage() {
     }
 
     setIsSubmitting(true);
+
+    if (user) {
+      await signOut();
+    }
+
     const result = await signUp(email.trim(), password, role);
     setIsSubmitting(false);
 
     if (result.error) {
       setError(result.error.message || 'Unable to register.');
+      toast.error(result.error.message || 'Unable to register.');
       return;
     }
 
     if (result.data?.session?.user) {
       const createdRole = result.data.session.user.user_metadata?.role || role;
+      toast.success(`Welcome! Account created as ${createdRole}.`);
       router.replace(`/${createdRole}/dashboard`);
       return;
     }
 
     setMessage(`Registration completed. Sign in as ${role} to continue.`);
+    toast.success(`Registration completed. Sign in as ${role} to continue.`);
   };
 
   const currentRoleContent = roleContent[role];
@@ -111,6 +114,11 @@ export default function RegisterPage() {
             <div>
               <h1 className="text-3xl font-semibold tracking-tight text-white">Create your account</h1>
               <p className="mt-2 text-slate-400">{currentRoleContent.description}</p>
+              {user ? (
+                <p className="mt-3 text-sm text-amber-300">
+                  A session is already active. Registering here will switch accounts first.
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -169,5 +177,13 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#081a3c]" />}>
+      <RegisterPageContent />
+    </Suspense>
   );
 }
