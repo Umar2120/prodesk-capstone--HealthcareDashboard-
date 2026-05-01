@@ -63,14 +63,28 @@ function RegisterPageContent() {
     }
 
     if (result.data?.session?.user) {
-      const createdRole = result.data.session.user.user_metadata?.role || role;
+      const createdRole = result.data?.normalizedUser?.role || role;
       toast.success(`Welcome! Account created as ${createdRole}.`);
-      router.replace(`/${createdRole}/dashboard`);
+      
+      // For doctors, create their public profile in the database
+      if (createdRole === 'doctor') {
+        // Small delay then redirect - profile will be created on first sign in
+        setTimeout(() => {
+          router.replace(`/${createdRole}/dashboard`);
+        }, 100);
+      } else {
+        router.replace(`/${createdRole}/dashboard`);
+      }
       return;
     }
 
-    setMessage(`Registration completed. Sign in as ${role} to continue.`);
-    toast.success(`Registration completed. Sign in as ${role} to continue.`);
+    const followUpMessage =
+      role === 'doctor'
+        ? 'Registration completed. Verify your email if prompted, then sign in once as doctor to create your public doctor profile.'
+        : `Registration completed. Sign in as ${role} to continue.`;
+
+    setMessage(followUpMessage);
+    toast.success(followUpMessage);
   };
 
   const currentRoleContent = roleContent[role];

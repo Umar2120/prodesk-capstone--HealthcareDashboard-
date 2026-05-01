@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { Calendar, Clock, MapPin, CheckCircle, X } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
+import { InlineSpinnerCard, SkeletonList } from "../../../components/LoadingStates";
 import { formatAppointmentDate, getStatusLabel, statusColors } from "../../../lib/appointments";
+import { toast } from "sonner";
 
 export default function DoctorAppointments() {
   const {
@@ -16,7 +18,9 @@ export default function DoctorAppointments() {
   const [filterStatus, setFilterStatus] = useState("All");
   const [actioningId, setActioningId] = useState("");
 
-  if (!currentDoctor) return null;
+  if (!currentDoctor) {
+    return <InlineSpinnerCard title="Loading appointments" message="Fetching your patient schedule and current statuses." />;
+  }
 
   const myAppointments = [...appointments].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -28,15 +32,27 @@ export default function DoctorAppointments() {
 
   const handleStatusUpdate = async (appointmentId, newStatus) => {
     setActioningId(appointmentId);
-    await updateAppointmentStatus(appointmentId, newStatus);
+    const result = await updateAppointmentStatus(appointmentId, newStatus);
     setActioningId("");
+
+    if (result?.error) {
+      toast.error(result.error.message || "Unable to update appointment status.");
+      return;
+    }
+
+    const labels = {
+      scheduled: "Appointment approved successfully.",
+      cancelled: "Appointment rejected successfully.",
+      completed: "Appointment marked as completed.",
+    };
+    toast.success(labels[newStatus] || "Appointment updated successfully.");
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">Appointments</h1>
-        <p className="text-slate-500 mt-1">Manage your patient appointments</p>
+    <div className="p-4 lg:p-6 space-y-6">
+      <div className="pt-12 lg:pt-0">
+        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">Appointments</h1>
+        <p className="text-slate-500 mt-1 text-sm lg:text-base">Manage your patient appointments</p>
       </div>
 
       {appointmentsError && (
@@ -62,9 +78,7 @@ export default function DoctorAppointments() {
       </div>
 
       {appointmentsLoading ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-          <p className="text-slate-500">Loading appointments from Supabase...</p>
-        </div>
+        <SkeletonList count={4} />
       ) : (
         <div className="space-y-3">
           {filtered.length === 0 ? (

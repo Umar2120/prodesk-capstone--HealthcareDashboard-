@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useMemo } from "react";
-import { Pill, Calendar, FilePlus, AlertCircle, Loader2 } from "lucide-react";
+import { Pill, Calendar, FilePlus } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
+import { InlineSpinnerCard, SkeletonList } from "../../../components/LoadingStates";
 
 const statusColors = {
   active: "bg-emerald-100 text-emerald-800",
@@ -14,8 +15,6 @@ export default function Prescriptions() {
   const { currentPatient, prescriptions, prescriptionsLoading, prescriptionsError } = useApp();
   const [selectedStatus, setSelectedStatus] = useState("All");
 
-  if (!currentPatient) return null;
-
   // Memoized filtered prescriptions
   const filtered = useMemo(() => {
     const sorted = [...prescriptions].sort(
@@ -26,11 +25,15 @@ export default function Prescriptions() {
     return sorted.filter((p) => p.status === selectedStatus.toLowerCase());
   }, [prescriptions, selectedStatus]);
 
+  if (!currentPatient) {
+    return <InlineSpinnerCard title="Loading prescriptions" message="Fetching your medication history and active prescriptions." />;
+  }
+
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">Prescriptions</h1>
-        <p className="text-slate-500 mt-1">Manage your medications</p>
+    <div className="p-4 lg:p-6 space-y-6">
+      <div className="pt-12 lg:pt-0">
+        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">Prescriptions</h1>
+        <p className="text-slate-500 mt-1 text-sm lg:text-base">Manage your medications</p>
       </div>
 
       {prescriptionsError && (
@@ -56,10 +59,7 @@ export default function Prescriptions() {
       </div>
 
       {prescriptionsLoading ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-          <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-4" />
-          <p className="text-slate-500">Loading prescriptions...</p>
-        </div>
+        <SkeletonList count={4} />
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
           <Pill className="w-12 h-12 text-slate-300 mx-auto mb-4" />

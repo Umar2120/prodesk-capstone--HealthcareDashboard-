@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Users,
@@ -13,6 +13,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
+import { useAuth } from "../../../lib/auth";
+import { InlineSpinnerCard, SkeletonList, SkeletonStats, SkeletonTable } from "../../../components/LoadingStates";
 import AppointmentVolumeChart from "../../../lib/AppointmentVolumeChart";
 import {
   formatAppointmentDate,
@@ -24,8 +26,23 @@ import { getDoctorDataSeed } from "../../../lib/mockData";
 import { toast } from 'sonner';
 
 export default function DoctorDashboard() {
+  const { user, loading: authLoading } = useAuth();
   const { currentDoctor, appointments, appointmentsLoading, appointmentsError, addPrescription } = useApp();
   const router = useRouter();
+
+  // Auth guard - redirect to login if not authenticated
+  useEffect(() => {
+    // Only redirect after auth loading is complete AND user is null
+    if (!authLoading && !user) {
+      router.push('/login?role=doctor');
+    }
+  }, [user, authLoading, router]);
+
+  // Show loading while checking auth (wait for loading to complete)
+  if (authLoading) {
+    return <InlineSpinnerCard title="Verifying session" message="Please wait while we verify your login." />;
+  }
+  const doctorProfile = currentDoctor ? getDoctorDataSeed(currentDoctor) : null;
   
   // Prescription form state
   const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
@@ -88,14 +105,9 @@ export default function DoctorDashboard() {
     }
   };
 
-  if (!currentDoctor) return null;
-
-  const doctorProfile = getDoctorDataSeed(currentDoctor);
-  if (!doctorProfile) return null;
-
   // Memoized values to prevent unnecessary re-renders
   const memoizedAnalytics = useMemo(() => ({
-    displayName: doctorProfile.name.replace(/^Dr\.\s*/i, "").split(" ")[0],
+    displayName: doctorProfile?.name?.replace(/^Dr\.\s*/i, "").split(" ")[0] || "Doctor",
     myAppointments: [...appointments].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
     todayKey: new Date().toISOString().split("T")[0],
   }), [appointments, doctorProfile]);
@@ -126,24 +138,32 @@ export default function DoctorDashboard() {
     { label: "Total Patients", value: uniquePatients.length, icon: Users, color: "text-blue-500", bg: "bg-blue-50" },
     { label: "Appointments Today", value: todayAppts.length, icon: Calendar, color: "text-purple-500", bg: "bg-purple-50" },
     { label: "Completed", value: completedAppts.length, icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-50" },
-    { label: "Average Rating", value: Number(doctorProfile.rating ?? 4.8).toFixed(1), icon: Star, color: "text-amber-500", bg: "bg-amber-50" },
+    { label: "Average Rating", value: Number(doctorProfile?.rating ?? 4.8).toFixed(1), icon: Star, color: "text-amber-500", bg: "bg-amber-50" },
   ];
 
+  if (!currentDoctor) {
+    return <InlineSpinnerCard title="Loading your dashboard" message="Preparing today's schedule, patient stats, and appointment trends." />;
+  }
+
+  if (!doctorProfile) {
+    return <InlineSpinnerCard title="Loading your profile" message="Finishing doctor profile setup for the dashboard." />;
+  }
+
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">
+    <div className="p-4 lg:p-6 space-y-6">
+      <div className="pt-12 lg:pt-0">
+        <h1 className="text-xl lg:text-3xl font-bold text-slate-900">
           Welcome back,{" "}
           <button
             type="button"
             onClick={() => router.push("/profile")}
-            className="inline-flex items-center gap-2 underline decoration-slate-300 underline-offset-4 text-slate-900 hover:text-blue-600 transition"
+            className="inline-flex items-center gap-1 underline decoration-slate-300 underline-offset-4 text-slate-900 hover:text-blue-600 transition"
           >
             Dr. {displayName}
             <User className="w-4 h-4" />
           </button>
         </h1>
-        <p className="text-slate-500 mt-1">Your live dashboard for {doctorProfile.department}</p>
+        <p className="text-slate-500 mt-1 text-sm lg:text-base">Your live dashboard for {doctorProfile.department}</p>
       </div>
 
       {appointmentsError && (
@@ -153,7 +173,11 @@ export default function DoctorDashboard() {
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {analyticsData.map((stat) => (
+        {appointmentsLoading ? (
+          <div className="col-span-full">
+            <SkeletonStats />
+          </div>
+        ) : analyticsData.map((stat) => (
           <div key={stat.label} className="bg-white rounded-xl border border-slate-200 p-4">
             <div className={`w-8 h-8 ${stat.bg} rounded-lg flex items-center justify-center mb-3`}>
               <stat.icon className={`w-4 h-4 ${stat.color}`} />
@@ -177,7 +201,7 @@ export default function DoctorDashboard() {
           </div>
 
           {appointmentsLoading ? (
-            <p className="text-slate-500 text-center py-6">Loading appointments...</p>
+            <SkeletonList count={3} />
           ) : todayAppts.length === 0 ? (
             <p className="text-slate-500 text-center py-6">No appointments today</p>
           ) : (
@@ -292,7 +316,7 @@ export default function DoctorDashboard() {
         </div>
 
         {appointmentsLoading ? (
-          <p className="text-slate-500 text-center py-6">Loading upcoming appointments...</p>
+          <SkeletonTable rows={4} cols={4} />
         ) : upcomingAppts.length === 0 ? (
           <p className="text-slate-500 text-center py-6">No upcoming appointments</p>
         ) : (

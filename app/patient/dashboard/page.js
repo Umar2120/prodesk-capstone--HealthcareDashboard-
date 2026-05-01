@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
@@ -18,6 +18,8 @@ import {
   User,
 } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
+import { useAuth } from "../../../lib/auth";
+import { InlineSpinnerCard, SkeletonList, SkeletonTable } from "../../../components/LoadingStates";
 import AppointmentStatusChart from "../../../lib/AppointmentStatusChart";
 import {
   formatAppointmentDate,
@@ -31,13 +33,25 @@ import {
 } from "../../../lib/mockData";
 
 export default function PatientDashboard() {
+  const { user, loading: authLoading } = useAuth();
   const { currentPatient, appointments, appointmentsLoading, appointmentsError, prescriptions } = useApp();
   const router = useRouter();
 
-  if (!currentPatient) return null;
+  // Auth guard - redirect to login if not authenticated
+  useEffect(() => {
+    // Only redirect after auth loading is complete AND user is null
+    if (!authLoading && !user) {
+      router.push('/login?role=patient');
+    }
+  }, [user, authLoading, router]);
 
-  const patientProfile = getPatientDataSeed(currentPatient);
-  const displayName = patientProfile.name.split(" ")[0];
+  // Show loading while checking auth (wait for loading to complete)
+  if (authLoading) {
+    return <InlineSpinnerCard title="Verifying session" message="Please wait while we verify your login." />;
+  }
+  const patientProfile = currentPatient ? getPatientDataSeed(currentPatient) : null;
+
+  const displayName = patientProfile?.name?.split(" ")[0] || "Patient";
   
   // Use real appointments from Supabase
   const myAppts = useMemo(() => 
@@ -54,6 +68,10 @@ export default function PatientDashboard() {
   );
   
   const appointmentSummary = getAppointmentStatusCounts(myAppts);
+
+  if (!currentPatient || !patientProfile) {
+    return <InlineSpinnerCard title="Loading your dashboard" message="Building your care overview, vitals, and appointment summary." />;
+  }
 
   const latestVitals = vitalSigns[vitalSigns.length - 1];
   const prevVitals = vitalSigns[vitalSigns.length - 2];
@@ -102,15 +120,15 @@ export default function PatientDashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 lg:p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-12 sm:pt-0">
         <div>
-          <h1 className="text-slate-900" style={{ fontSize: "1.5rem", fontWeight: 700 }}>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
             Good morning,{" "}
             <button
               type="button"
               onClick={() => router.push("/profile")}
-              className="inline-flex items-center gap-2 underline decoration-slate-300 underline-offset-4 text-slate-900 hover:text-blue-600 transition"
+              className="inline-flex items-center gap-1 underline decoration-slate-300 underline-offset-4 text-slate-900 hover:text-blue-600 transition"
             >
               {displayName}
               <User className="w-4 h-4" />
@@ -120,7 +138,7 @@ export default function PatientDashboard() {
         </div>
         <button
           onClick={() => router.push("/patient/appointments")}
-          className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+          className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors w-full sm:w-auto"
         >
           <Calendar className="w-4 h-4" />
           Book Appointment
@@ -222,7 +240,9 @@ export default function PatientDashboard() {
             </button>
           </div>
           {appointmentsLoading ? (
-            <p className="text-slate-400 text-sm text-center py-6">Loading appointments...</p>
+            <div className="py-2">
+              <SkeletonList count={3} />
+            </div>
           ) : upcoming.length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-6">No upcoming appointments</p>
           ) : (
@@ -260,7 +280,7 @@ export default function PatientDashboard() {
         </div>
 
         {appointmentsLoading ? (
-          <div className="py-10 text-center text-sm text-slate-400">Loading your appointments...</div>
+          <SkeletonTable rows={4} cols={5} />
         ) : myAppts.length === 0 ? (
           <div className="py-10 text-center text-sm text-slate-400">No cloud appointments yet. Book your first visit to populate this table.</div>
         ) : (

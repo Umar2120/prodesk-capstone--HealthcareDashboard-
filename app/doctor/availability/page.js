@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, X } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
+import { InlineSpinnerCard } from "../../../components/LoadingStates";
 
 const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const timeSlots = [
@@ -35,7 +36,9 @@ export default function DoctorAvailability() {
     Saturday: [],
   });
 
-  if (!currentDoctor) return null;
+  if (!currentDoctor) {
+    return <InlineSpinnerCard title="Loading availability" message="Preparing your schedule controls and current open slots." />;
+  }
 
   const toggleDay = (day) => {
     setAvailability((prev) => ({
@@ -61,10 +64,10 @@ export default function DoctorAvailability() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">Availability</h1>
-        <p className="text-slate-500 mt-1">Manage your schedule and available time slots</p>
+    <div className="p-4 lg:p-6 space-y-6">
+      <div className="pt-12 lg:pt-0">
+        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">Availability</h1>
+        <p className="text-slate-500 mt-1 text-sm lg:text-base">Manage your schedule and available time slots</p>
       </div>
 
       <div className="bg-blue-50 rounded-xl border border-blue-200 p-4">

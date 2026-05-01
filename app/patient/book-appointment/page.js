@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Calendar, Clock, ArrowRight, CheckCircle, MapPin, Pencil, Trash2, Loader2, AlertCircle } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
 import { formatAppointmentDate, getStatusLabel, statusColors } from "../../../lib/appointments";
+import { ConfirmDialog, InlineSpinnerCard, SkeletonList } from "../../../components/LoadingStates";
 import { toast } from 'sonner';
 
 // Skeleton loader component for doctors
@@ -49,6 +50,7 @@ export default function BookAppointment() {
   const [submitting, setSubmitting] = useState(false);
   const [editingAppointmentId, setEditingAppointmentId] = useState("");
   const [deletingAppointmentId, setDeletingAppointmentId] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState("");
 
   useEffect(() => {
     if (!editingAppointmentId || selectedDoctor || registeredDoctors.length === 0) return;
@@ -62,7 +64,9 @@ export default function BookAppointment() {
     }
   }, [appointments, editingAppointmentId, registeredDoctors, selectedDoctor]);
 
-  if (!currentPatient) return null;
+  if (!currentPatient) {
+    return <InlineSpinnerCard title="Loading appointment tools" message="Preparing doctor availability and your appointment history." />;
+  }
 
   const appointmentTypes = ["Consultation", "Follow-up", "Check-up", "Lab Work"];
   const myAppointments = [...appointments].sort(
@@ -136,9 +140,7 @@ export default function BookAppointment() {
   };
 
   const handleDeleteAppointment = async (appointmentId) => {
-    const shouldDelete = window.confirm("Are you sure you want to delete this appointment?");
-    if (!shouldDelete) return;
-
+    setConfirmDeleteId("");
     setDeletingAppointmentId(appointmentId);
     const result = await deleteAppointment(appointmentId);
     setDeletingAppointmentId("");
@@ -459,7 +461,7 @@ export default function BookAppointment() {
         </div>
 
         {appointmentsLoading ? (
-          <div className="py-8 text-center text-slate-500">Loading appointments...</div>
+          <SkeletonList count={3} />
         ) : myAppointments.length === 0 ? (
           <div className="py-8 text-center text-slate-500">No appointments found</div>
         ) : (
@@ -522,7 +524,7 @@ export default function BookAppointment() {
                             Edit
                           </button>
                           <button
-                            onClick={() => handleDeleteAppointment(appointment.id)}
+                            onClick={() => setConfirmDeleteId(appointment.id)}
                             disabled={deletingAppointmentId === appointment.id}
                             className="inline-flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-60"
                           >
@@ -539,6 +541,18 @@ export default function BookAppointment() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(confirmDeleteId)}
+        onClose={() => (deletingAppointmentId ? null : setConfirmDeleteId(""))}
+        onConfirm={() => handleDeleteAppointment(confirmDeleteId)}
+        title="Delete appointment?"
+        message="This will permanently remove the appointment from your list."
+        confirmText="Delete"
+        cancelText="Keep"
+        variant="danger"
+        loading={Boolean(confirmDeleteId) && deletingAppointmentId === confirmDeleteId}
+      />
     </div>
   );
 }

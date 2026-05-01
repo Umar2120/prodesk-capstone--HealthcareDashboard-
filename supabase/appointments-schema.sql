@@ -51,6 +51,9 @@ drop policy if exists "authenticated users can read appointments" on public.appo
 drop policy if exists "patients can create own appointments" on public.appointments;
 drop policy if exists "authenticated users can update appointments" on public.appointments;
 drop policy if exists "patients can delete own appointments" on public.appointments;
+drop policy if exists "patients and assigned doctors can read appointments" on public.appointments;
+drop policy if exists "patients can create appointment requests" on public.appointments;
+drop policy if exists "patients and assigned doctors can update appointments" on public.appointments;
 
 create policy "authenticated users can read doctors"
 on public.doctors
@@ -71,24 +74,51 @@ to authenticated
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
-create policy "authenticated users can read appointments"
+create policy "patients and assigned doctors can read appointments"
 on public.appointments
 for select
 to authenticated
-using (true);
+using (
+  auth.uid() = patient_user_id
+  or exists (
+    select 1
+    from public.doctors
+    where public.doctors.id::text = appointments.doctor_id
+      and public.doctors.user_id = auth.uid()
+  )
+);
 
-create policy "patients can create own appointments"
+create policy "patients can create appointment requests"
 on public.appointments
 for insert
 to authenticated
-with check (auth.uid() = patient_user_id);
+with check (
+  auth.uid() = patient_user_id
+  and status = 'pending'
+);
 
-create policy "authenticated users can update appointments"
+create policy "patients and assigned doctors can update appointments"
 on public.appointments
 for update
 to authenticated
-using (true)
-with check (true);
+using (
+  auth.uid() = patient_user_id
+  or exists (
+    select 1
+    from public.doctors
+    where public.doctors.id::text = appointments.doctor_id
+      and public.doctors.user_id = auth.uid()
+  )
+)
+with check (
+  auth.uid() = patient_user_id
+  or exists (
+    select 1
+    from public.doctors
+    where public.doctors.id::text = appointments.doctor_id
+      and public.doctors.user_id = auth.uid()
+  )
+);
 
 create policy "patients can delete own appointments"
 on public.appointments

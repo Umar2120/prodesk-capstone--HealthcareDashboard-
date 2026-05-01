@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
+import { FullScreenLoader } from '../../components/LoadingStates';
 
 export default function DashboardRedirect() {
   const router = useRouter();
@@ -11,16 +12,15 @@ export default function DashboardRedirect() {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        router.replace(`/${user.role || 'patient'}/dashboard`);
+        // Small delay to ensure session is loaded before redirect
+        setTimeout(() => {
+          window.location.href = `/${user.role || 'patient'}/dashboard`;
+        }, 100);
       } else {
         router.replace('/login');
       }
     }
   }, [loading, user, router]);
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-      <p>Redirecting to your dashboard...</p>
-    </div>
-  );
+  return <FullScreenLoader title="Routing you to the right dashboard" message="Checking your signed-in role and sending you to the right workspace." />;
 }

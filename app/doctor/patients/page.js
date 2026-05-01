@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Mail, Phone, Calendar } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
+import { InlineSpinnerCard, SkeletonList } from "../../../components/LoadingStates";
 import { formatAppointmentDate } from "../../../lib/appointments";
 
 export default function DoctorPatients() {
@@ -33,7 +34,9 @@ export default function DoctorPatients() {
     return [...grouped.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [appointments]);
 
-  if (!currentDoctor) return null;
+  if (!currentDoctor) {
+    return <InlineSpinnerCard title="Loading patients" message="Gathering patients from your latest appointment activity." />;
+  }
 
   const filtered = myPatients.filter(
     (patient) =>
@@ -42,10 +45,10 @@ export default function DoctorPatients() {
   );
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">My Patients</h1>
-        <p className="text-slate-500 mt-1">Patients booked with your registered doctor account ({myPatients.length} total)</p>
+    <div className="p-4 lg:p-6 space-y-6">
+      <div className="pt-12 lg:pt-0">
+        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">My Patients</h1>
+        <p className="text-slate-500 mt-1 text-sm lg:text-base">Patients booked with your registered doctor account ({myPatients.length} total)</p>
       </div>
 
       <div>
@@ -59,9 +62,7 @@ export default function DoctorPatients() {
       </div>
 
       {appointmentsLoading ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-          <p className="text-slate-500">Loading patients...</p>
-        </div>
+        <SkeletonList count={6} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.length === 0 ? (

@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { Calendar, Clock, MapPin, CheckCircle, Pencil, Trash2 } from "lucide-react";
 import { useApp } from "../../../lib/AppContext";
+import { ConfirmDialog, InlineSpinnerCard, SkeletonList } from "../../../components/LoadingStates";
 import {
   formatAppointmentDate,
   getStatusLabel,
   statusColors,
 } from "../../../lib/appointments";
+import { toast } from "sonner";
 
 export default function Appointments() {
   const {
@@ -35,6 +37,7 @@ export default function Appointments() {
   const [submitting, setSubmitting] = useState(false);
   const [editingAppointmentId, setEditingAppointmentId] = useState("");
   const [deletingAppointmentId, setDeletingAppointmentId] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState("");
 
   useEffect(() => {
     if (!editingAppointmentId || selectedDoctor || registeredDoctors.length === 0) return;
@@ -48,7 +51,9 @@ export default function Appointments() {
     }
   }, [appointments, editingAppointmentId, registeredDoctors, selectedDoctor]);
 
-  if (!currentPatient) return null;
+  if (!currentPatient) {
+    return <InlineSpinnerCard title="Loading your appointments" message="Fetching your patient profile and upcoming visits." />;
+  }
 
   const myAppointments = [...appointments].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -121,10 +126,12 @@ export default function Appointments() {
 
     if (result.error) {
       setBookingError(result.error.message || "Unable to save your appointment right now.");
+      toast.error(result.error.message || "Unable to save your appointment right now.");
       return;
     }
 
     setBookingSuccess(true);
+    toast.success(editingAppointmentId ? "Appointment updated successfully." : "Appointment booked successfully.");
 
     setTimeout(() => {
       resetBookingFlow();
@@ -133,23 +140,25 @@ export default function Appointments() {
   };
 
   const handleDeleteAppointment = async (appointmentId) => {
-    const shouldDelete = window.confirm("Are you sure you want to delete this appointment?");
-    if (!shouldDelete) return;
-
+    setConfirmDeleteId("");
     setDeletingAppointmentId(appointmentId);
     const result = await deleteAppointment(appointmentId);
     setDeletingAppointmentId("");
 
     if (result.error) {
       setBookingError(result.error.message || "Unable to delete this appointment right now.");
+      toast.error(result.error.message || "Unable to delete this appointment right now.");
+      return;
     }
+
+    toast.success("Appointment deleted successfully.");
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">Appointments</h1>
-        <p className="text-slate-500 mt-1">Manage and view your medical appointments</p>
+    <div className="p-4 lg:p-6 space-y-6">
+      <div className="pt-12 lg:pt-0">
+        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">Appointments</h1>
+        <p className="text-slate-500 mt-1 text-sm lg:text-base">Manage and view your medical appointments</p>
       </div>
 
       <div className="flex gap-3">
@@ -222,9 +231,7 @@ export default function Appointments() {
             <div className="space-y-4">
               <h3 className="font-semibold text-slate-900">Select a Doctor</h3>
               {registeredDoctorsLoading ? (
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 text-center text-slate-500">
-                  Loading registered doctors...
-                </div>
+                <SkeletonList count={4} />
               ) : registeredDoctors.length === 0 ? (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 text-center text-slate-500">
                   No registered doctors are available yet.
@@ -446,9 +453,7 @@ export default function Appointments() {
       </div>
 
       {appointmentsLoading ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-          <p className="text-slate-500">Loading appointments from Supabase...</p>
-        </div>
+        <SkeletonList count={4} />
       ) : (
         <div className="space-y-3">
           {filtered.length === 0 ? (
@@ -513,7 +518,7 @@ export default function Appointments() {
                             Edit
                           </button>
                           <button
-                            onClick={() => handleDeleteAppointment(apt.id)}
+                            onClick={() => setConfirmDeleteId(apt.id)}
                             disabled={deletingAppointmentId === apt.id}
                             className="inline-flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-60"
                           >
@@ -530,6 +535,18 @@ export default function Appointments() {
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(confirmDeleteId)}
+        onClose={() => (deletingAppointmentId ? null : setConfirmDeleteId(""))}
+        onConfirm={() => handleDeleteAppointment(confirmDeleteId)}
+        title="Delete appointment?"
+        message="This appointment will be removed from your schedule immediately."
+        confirmText="Delete"
+        cancelText="Keep"
+        variant="danger"
+        loading={Boolean(confirmDeleteId) && deletingAppointmentId === confirmDeleteId}
+      />
     </div>
   );
 }

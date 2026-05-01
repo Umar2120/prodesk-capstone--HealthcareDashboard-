@@ -44,7 +44,7 @@ function LoginPageContent() {
       await signOut();
     }
 
-    const result = await signIn(email.trim(), password);
+    const result = await signIn(email.trim(), password, role);
     setIsSubmitting(false);
 
     if (result.error) {
@@ -53,7 +53,7 @@ function LoginPageContent() {
       return;
     }
 
-    const signedInRole = result.data?.session?.user?.user_metadata?.role || role;
+    const signedInRole = result.data?.normalizedUser?.role || 'patient';
     toast.success(`Welcome back! Signed in as ${signedInRole}.`);
     router.replace(`/${signedInRole}/dashboard`);
   };

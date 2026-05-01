@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
+import { FullScreenLoader } from '../../components/LoadingStates';
 
 export default function PatientPage() {
   const { user, loading } = useAuth();
@@ -18,9 +19,5 @@ export default function PatientPage() {
     }
   }, [loading, router, user]);
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-      <p>Redirecting to the patient dashboard...</p>
-    </div>
-  );
+  return <FullScreenLoader title="Opening your patient dashboard" message="Verifying your session and preparing your care overview." />;
 }

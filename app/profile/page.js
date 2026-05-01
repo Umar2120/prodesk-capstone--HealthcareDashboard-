@@ -6,6 +6,7 @@ import { ArrowLeft, Calendar, Camera, Mail, Phone, Save, User } from 'lucide-rea
 import { useAuth } from '../../lib/auth';
 import { useApp } from '../../lib/AppContext';
 import { supabase } from '../../lib/supabaseClient';
+import { FullScreenLoader } from '../../components/LoadingStates';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -112,11 +113,7 @@ export default function ProfilePage() {
   };
 
   if (!profile) {
-    return (
-      <div className="min-h-screen bg-[#081a3c] text-white flex items-center justify-center">
-        <p>Loading profile...</p>
-      </div>
-    );
+    return <FullScreenLoader title="Loading your profile" message="Fetching your latest personal details and saved profile image." />;
   }
 
   return (
