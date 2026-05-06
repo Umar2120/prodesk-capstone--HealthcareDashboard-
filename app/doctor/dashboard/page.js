@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   Users,
@@ -15,7 +16,6 @@ import {
 import { useApp } from "../../../lib/AppContext";
 import { useAuth } from "../../../lib/auth";
 import { InlineSpinnerCard, SkeletonList, SkeletonStats, SkeletonTable } from "../../../components/LoadingStates";
-import AppointmentVolumeChart from "../../../lib/AppointmentVolumeChart";
 import {
   formatAppointmentDate,
   getMonthlyAppointmentChartData,
@@ -24,6 +24,18 @@ import {
 } from "../../../lib/appointments";
 import { getDoctorDataSeed } from "../../../lib/mockData";
 import { toast } from 'sonner';
+
+const AppointmentVolumeChart = dynamic(
+  () => import("../../../lib/AppointmentVolumeChart"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-72 flex items-center justify-center text-slate-500">
+        Loading chart...
+      </div>
+    ),
+  }
+);
 
 export default function DoctorDashboard() {
   const { user, loading: authLoading } = useAuth();
