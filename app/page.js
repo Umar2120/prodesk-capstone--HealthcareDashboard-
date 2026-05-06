@@ -99,7 +99,7 @@ export default function Home() {
 
                   <span
                     className={`mt-8 inline-flex items-center gap-3 text-[16px] font-semibold ${
-                      isBlue ? 'text-[#54a5ff]' : 'text-[#18d4cf]'
+                      isBlue ? 'text-[#8fc4ff]' : 'text-[#62e4e1]'
                     }`}
                   >
                     {cta}
@@ -111,7 +111,7 @@ export default function Home() {
           </div>
         </section>
 
-        <footer className="flex flex-wrap items-center justify-center gap-5 border-t border-[rgba(255,255,255,0.06)] pt-4 text-sm text-[#6d7ea8]">
+        <footer className="flex flex-wrap items-center justify-center gap-5 border-t border-[rgba(255,255,255,0.06)] pt-4 text-sm text-[#b0bfdf]">
           {trustItems.map(({ label, Icon }, index) => (
             <div key={label} className="flex items-center gap-4">
               {index > 0 ? <span className="hidden text-[#4d5e8d] sm:block">.</span> : null}
